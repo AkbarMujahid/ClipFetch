@@ -9,17 +9,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🔥 FIX: __dirname for ES modules
+// __dirname fix
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 🔥 SERVE FRONTEND (IMPORTANT)
+// serve frontend
 app.use(express.static(path.join(__dirname, "public")));
 
-// 🔥 FIX: dynamic port for Render
 const PORT = process.env.PORT || 3000;
 
-// store progress
 let progress = { percent: 0, status: "idle" };
 
 // clean filename
@@ -37,14 +35,26 @@ function cleanFilename(name) {
 app.post("/formats", (req, res) => {
   const { url } = req.body;
 
-  const proc = spawn("python", ["-m", "yt_dlp", "-j", url]);
+  const proc = spawn("python3", ["-m", "yt_dlp", "-j", url]);
 
   let data = "";
+  let error = "";
 
   proc.stdout.on("data", chunk => data += chunk);
+  proc.stderr.on("data", err => error += err.toString());
+
+  proc.on("error", err => {
+    console.log("SPAWN ERROR:", err);
+    res.status(500).json({ error: "Python not found" });
+  });
 
   proc.on("close", () => {
     try {
+      if (!data) {
+        console.log("YT-DLP ERROR:", error);
+        return res.status(500).json({ error: "yt-dlp failed" });
+      }
+
       const json = JSON.parse(data);
 
       const qualities = [...new Set(
@@ -62,13 +72,14 @@ app.post("/formats", (req, res) => {
       });
 
     } catch (err) {
-      res.status(500).json({ error: "Failed to fetch formats" });
+      console.log("PARSE ERROR:", err);
+      res.status(500).json({ error: "Failed to parse formats" });
     }
   });
 });
 
 // =========================
-// PROGRESS ROUTE
+// PROGRESS
 // =========================
 app.get("/progress", (req, res) => {
   res.json(progress);
@@ -83,7 +94,7 @@ app.get("/download", (req, res) => {
 
   progress = { percent: 0, status: "starting" };
 
-  const infoProc = spawn("python", ["-m", "yt_dlp", "-j", url]);
+  const infoProc = spawn("python3", ["-m", "yt_dlp", "-j", url]);
 
   let infoData = "";
 
@@ -110,12 +121,10 @@ app.get("/download", (req, res) => {
         url
       ];
 
-      // 🔥 IMPORTANT: DO NOT use Windows ffmpeg path (Render won't have it)
-      const proc = spawn("python", args);
+      const proc = spawn("python3", args);
 
       proc.stdout.on("data", data => {
         const str = data.toString();
-
         const match = str.match(/(\d+\.\d+)%/);
         if (match) {
           progress.percent = parseFloat(match[1]);
@@ -123,7 +132,12 @@ app.get("/download", (req, res) => {
         }
       });
 
-      proc.stderr.on("data", d => console.log(d.toString()));
+      proc.stderr.on("data", d => console.log("YT-DLP:", d.toString()));
+
+      proc.on("error", err => {
+        console.log("DOWNLOAD SPAWN ERROR:", err);
+        res.status(500).send("Download failed");
+      });
 
       proc.on("close", () => {
         progress.percent = 100;
@@ -139,21 +153,17 @@ app.get("/download", (req, res) => {
       });
 
     } catch (err) {
+      console.log("DOWNLOAD ERROR:", err);
       res.status(500).send("Error processing download");
     }
   });
 });
 
-// =========================
-// ROOT FIX (IMPORTANT)
-// =========================
+// fallback
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// =========================
-// START SERVER
-// =========================
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
