@@ -1,4 +1,3 @@
-console.log("🔥 NEW DEPLOY VERSION LOADED");
 import express from "express";
 import cors from "cors";
 import { spawn } from "child_process";
@@ -10,7 +9,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// __dirname fix
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -40,18 +38,25 @@ app.post("/formats", (req, res) => {
 
   let data = "";
   let error = "";
+  let responded = false;
 
   proc.stdout.on("data", chunk => data += chunk);
   proc.stderr.on("data", err => error += err.toString());
 
   proc.on("error", err => {
-    console.log("SPAWN ERROR:", err);
-    res.status(500).json({ error: "Python not found" });
+    if (!responded) {
+      responded = true;
+      console.log("SPAWN ERROR:", err);
+      res.status(500).json({ error: "Python error" });
+    }
   });
 
   proc.on("close", () => {
+    if (responded) return;
+
     try {
       if (!data) {
+        responded = true;
         console.log("YT-DLP ERROR:", error);
         return res.status(500).json({ error: "yt-dlp failed" });
       }
@@ -64,6 +69,8 @@ app.post("/formats", (req, res) => {
           .map(f => f.height + "p")
       )].sort((a, b) => parseInt(a) - parseInt(b));
 
+      responded = true;
+
       res.json({
         title: json.title || "Video",
         thumbnail: json.thumbnail || "",
@@ -73,8 +80,11 @@ app.post("/formats", (req, res) => {
       });
 
     } catch (err) {
-      console.log("PARSE ERROR:", err);
-      res.status(500).json({ error: "Failed to parse formats" });
+      if (!responded) {
+        responded = true;
+        console.log("PARSE ERROR:", err);
+        res.status(500).json({ error: "Parse failed" });
+      }
     }
   });
 });
@@ -98,10 +108,21 @@ app.get("/download", (req, res) => {
   const infoProc = spawn("python3", ["-m", "yt_dlp", "-j", url]);
 
   let infoData = "";
+  let responded = false;
 
   infoProc.stdout.on("data", chunk => infoData += chunk);
 
+  infoProc.on("error", err => {
+    if (!responded) {
+      responded = true;
+      console.log("INFO SPAWN ERROR:", err);
+      res.status(500).send("Python error");
+    }
+  });
+
   infoProc.on("close", () => {
+    if (responded) return;
+
     try {
       const json = JSON.parse(infoData);
 
@@ -136,17 +157,25 @@ app.get("/download", (req, res) => {
       proc.stderr.on("data", d => console.log("YT-DLP:", d.toString()));
 
       proc.on("error", err => {
-        console.log("DOWNLOAD SPAWN ERROR:", err);
-        res.status(500).send("Download failed");
+        if (!responded) {
+          responded = true;
+          console.log("DOWNLOAD SPAWN ERROR:", err);
+          res.status(500).send("Download failed");
+        }
       });
 
       proc.on("close", () => {
+        if (responded) return;
+
         progress.percent = 100;
         progress.status = "completed";
 
         if (!fs.existsSync(filepath)) {
+          responded = true;
           return res.status(500).send("Download failed");
         }
+
+        responded = true;
 
         res.download(filepath, filename, () => {
           fs.unlink(filepath, () => {});
@@ -154,17 +183,25 @@ app.get("/download", (req, res) => {
       });
 
     } catch (err) {
-      console.log("DOWNLOAD ERROR:", err);
-      res.status(500).send("Error processing download");
+      if (!responded) {
+        responded = true;
+        console.log("DOWNLOAD ERROR:", err);
+        res.status(500).send("Error processing download");
+      }
     }
   });
 });
 
-// fallback
+// =========================
+// FALLBACK
+// =========================
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
+// =========================
+// START
+// =========================
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
