@@ -1,17 +1,20 @@
-FROM node:18
+FROM node:18-bullseye
 
-# Install Python + ffmpeg
+# Install Python + ffmpeg properly
 RUN apt-get update && \
     apt-get install -y python3 python3-pip ffmpeg && \
-    pip3 install yt-dlp
+    rm -rf /var/lib/apt/lists/*
+
+# Install yt-dlp
+RUN pip3 install yt-dlp
 
 WORKDIR /app
 
-# Copy only package files first (cache optimization)
+# Install node deps first
 COPY package*.json ./
 RUN npm install
 
-# Copy rest of files
+# Copy rest
 COPY . .
 
 # Start server
