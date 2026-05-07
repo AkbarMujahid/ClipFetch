@@ -31,14 +31,13 @@ Built with a clean UI and a Node.js backend using yt-dlp, it provides a smooth a
 
 ```
 ClipFetch/
-├── client/
+├── public/
 │   ├── index.html
 │   └── logo.png
 │
-├── server/
-│   ├── server.js
-│   ├── package.json
-│   └── node_modules/
+├── server.js
+│── package.json
+│── node_modules/
 ```
 
 ---
