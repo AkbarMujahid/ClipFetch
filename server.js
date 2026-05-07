@@ -34,7 +34,7 @@ function cleanFilename(name) {
 app.post("/formats", (req, res) => {
   const { url } = req.body;
 
-  const proc = spawn("python3", ["-m", "yt_dlp", "-j", url]);
+  const proc = spawn("python", ["-m", "yt_dlp", "-j", url]);
 
   let data = "";
   let error = "";
@@ -105,7 +105,7 @@ app.get("/download", (req, res) => {
 
   progress = { percent: 0, status: "starting" };
 
-  const infoProc = spawn("python3", ["-m", "yt_dlp", "-j", url]);
+  const infoProc = spawn("python", ["-m", "yt_dlp", "-j", url]);
 
   let infoData = "";
   let responded = false;
@@ -143,7 +143,7 @@ app.get("/download", (req, res) => {
         url
       ];
 
-      const proc = spawn("python3", args);
+      const proc = spawn("python", args);
 
       proc.stdout.on("data", data => {
         const str = data.toString();
