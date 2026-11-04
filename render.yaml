@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: clipfetch
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # the free plan has very little CPU, so run one download at a time
+      - key: MAX_CONCURRENT_JOBS
+        value: "1"
+      - key: MAX_QUEUED_JOBS
+        value: "5"
+      - key: MAX_HEIGHT
+        value: "1080"
+      - key: MAX_DURATION_MINUTES
+        value: "30"
+      - key: MAX_FILESIZE
+        value: "300M"
+      - key: JOB_TIMEOUT_MINUTES
+        value: "15"

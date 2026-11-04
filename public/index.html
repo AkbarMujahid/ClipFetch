@@ -243,29 +243,109 @@
     }
 
     /* =========================
-       LOADER
+       DOWNLOAD PROGRESS
     ========================= */
 
-    .spinner {
-      display: none;
+    .progress-box {
+      margin-top: 16px;
 
-      margin: 18px auto;
+      padding: 14px;
 
-      width: 42px;
-      height: 42px;
+      border-radius: 14px;
 
-      border: 4px solid rgba(255, 255, 255, 0.2);
-      border-top: 4px solid #1e88e5;
-
-      border-radius: 50%;
-
-      animation: spin 1s linear infinite;
+      background: rgba(255, 255, 255, 0.08);
     }
 
-    @keyframes spin {
-      100% {
-        transform: rotate(360deg);
-      }
+    .progress-box[hidden] {
+      display: none;
+    }
+
+    body.light .progress-box {
+      background: #f1f1f1;
+    }
+
+    .progress-head,
+    .progress-foot {
+      display: flex;
+
+      justify-content: space-between;
+
+      align-items: center;
+
+      gap: 10px;
+
+      font-size: 14px;
+    }
+
+    .progress-head {
+      font-weight: 600;
+    }
+
+    .progress-track {
+      height: 8px;
+
+      margin: 10px 0;
+
+      border-radius: 8px;
+
+      overflow: hidden;
+
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    body.light .progress-track {
+      background: #ddd;
+    }
+
+    .progress-bar {
+      width: 0;
+      height: 100%;
+
+      border-radius: 8px;
+
+      background: linear-gradient(90deg, #00c6ff, #ff00cc);
+
+      transition: width 0.3s;
+    }
+
+    .progress-bar.busy {
+      width: 100% !important;
+
+      background-size: 200% 100%;
+
+      animation: gradientBG 1.5s linear infinite;
+    }
+
+    .progress-foot {
+      font-size: 12px;
+
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    body.light .progress-foot {
+      color: #777;
+    }
+
+    .cancel-btn {
+      border: none;
+
+      background: rgba(255, 107, 107, 0.15);
+
+      color: #ff6b6b;
+
+      padding: 6px 10px;
+
+      border-radius: 8px;
+
+      cursor: pointer;
+
+      font-size: 12px;
+    }
+
+    .cancel-btn:hover {
+      background: #ff6b6b;
+
+      color: white;
     }
 
     /* =========================
@@ -804,13 +884,6 @@
 
 
     <!-- =========================
-         LOADER
-    ========================= -->
-
-
-
-
-    <!-- =========================
          VIDEO INFO
     ========================= -->
 
@@ -830,6 +903,44 @@
       id="formats"
       class="formats"
     ></div>
+
+
+    <!-- =========================
+         DOWNLOAD PROGRESS
+    ========================= -->
+
+    <div
+      id="progressBox"
+      class="progress-box"
+      hidden
+    >
+
+      <div class="progress-head">
+        <span id="progressLabel">Starting…</span>
+        <span id="progressPercent"></span>
+      </div>
+
+      <div class="progress-track">
+        <div
+          id="progressBar"
+          class="progress-bar"
+        ></div>
+      </div>
+
+      <div class="progress-foot">
+        <span id="progressMeta"></span>
+
+        <button
+          id="cancelBtn"
+          class="cancel-btn"
+          type="button"
+          onclick="cancelDownload()"
+        >
+          Cancel
+        </button>
+      </div>
+
+    </div>
 
 
     <!-- =========================
@@ -887,6 +998,8 @@
 
   let currentMode = "video";
 
+  let activeJob = null;
+
 
   const themeIcon =
     document.getElementById("themeIcon");
@@ -900,11 +1013,23 @@
   const statusElement =
     document.getElementById("status");
 
-  const loader =
-    document.getElementById("loader");
-
   const fetchBtn =
     document.getElementById("fetchBtn");
+
+  const progressBox =
+    document.getElementById("progressBox");
+
+  const progressLabel =
+    document.getElementById("progressLabel");
+
+  const progressPercent =
+    document.getElementById("progressPercent");
+
+  const progressBar =
+    document.getElementById("progressBar");
+
+  const progressMeta =
+    document.getElementById("progressMeta");
 
 
   /* =========================
@@ -1032,20 +1157,13 @@
 
       btn.onclick = () => {
 
-        const downloadUrl =
-          `${API}/download?url=${encodeURIComponent(
-            item.url
-          )}&quality=${encodeURIComponent(
-            item.quality
-          )}&type=${encodeURIComponent(
-            item.type || "video"
-          )}`;
-
-
-        window.open(
-          downloadUrl,
-          "_blank"
-        );
+        startDownload({
+          url: item.url,
+          quality: item.quality,
+          type: item.type || "video",
+          title: item.title,
+          thumbnail: item.thumbnail
+        });
       };
 
 
@@ -1297,8 +1415,6 @@
 
     /* Show loader */
 
-    
-
     fetchBtn.disabled =
       true;
 
@@ -1306,11 +1422,22 @@
       '<i class="fa-solid fa-spinner fa-spin"></i> Fetching...';
 
 
+    /* Free servers sleep when idle, so the first request can be slow */
+
+    const wakeTimer =
+      setTimeout(() => {
+
+        fetchBtn.innerHTML =
+          '<i class="fa-solid fa-spinner fa-spin"></i> Waking up server...';
+
+      }, 8000);
+
+
     try {
 
       const res =
         await fetch(
-          API + "/formats",
+          API + "/api/formats",
           {
             method: "POST",
 
@@ -1328,7 +1455,7 @@
 
 
       const data =
-        await res.json();
+        await readJson(res);
 
 
       if (!res.ok) {
@@ -1403,7 +1530,7 @@
 
     } finally {
 
-      
+      clearTimeout(wakeTimer);
 
       fetchBtn.disabled =
         false;
@@ -1604,7 +1731,7 @@
           "format-description";
 
         description.innerText =
-          "MP4 Video";
+          describeVideoQuality(quality);
 
 
         text.appendChild(
@@ -1648,7 +1775,7 @@
 
         div.onclick = () => {
 
-          downloadVideo(
+          downloadCurrent(
             quality,
             "video"
           );
@@ -1800,7 +1927,7 @@
 
         div.onclick = () => {
 
-          downloadVideo(
+          downloadCurrent(
             format.quality,
             "audio"
           );
@@ -1871,7 +1998,7 @@
      DOWNLOAD
   ========================= */
 
-  function downloadVideo(
+  function downloadCurrent(
     quality,
     type
   ) {
@@ -1886,59 +2013,345 @@
     }
 
 
-    const title =
-      currentVideoData?.title ||
-      "Video";
+    startDownload({
+      url: currentUrl,
+      quality,
+      type,
+      title: currentVideoData?.title || "Video",
+      thumbnail: currentVideoData?.thumbnail || ""
+    });
+  }
 
 
-    const thumbnail =
-      currentVideoData?.thumbnail ||
-      "";
+  /*
+     The server downloads the file first and reports
+     progress over Server-Sent Events. When it is ready,
+     the browser fetches the finished file.
+  */
+
+  async function startDownload(item) {
+
+    if (activeJob) {
+
+      showStatus(
+        "Please wait for the current download to finish.",
+        "error"
+      );
+
+      return;
+    }
 
 
     saveHistory(
-      currentUrl,
-      quality,
-      title,
-      thumbnail,
-      type
+      item.url,
+      item.quality,
+      item.title,
+      item.thumbnail,
+      item.type
     );
-
 
     loadHistory();
 
 
-    statusElement.style.color =
-      "#ccc";
+    showStatus("");
+
+    showProgress(
+      item.type === "audio"
+        ? "Preparing your MP3…"
+        : "Preparing your video…",
+      null,
+      ""
+    );
 
 
-    if (type === "audio") {
+    activeJob = { id: null, source: null };
 
-      statusElement.innerHTML =
-        '<i class="fa-solid fa-music"></i> Preparing your MP3...';
+
+    try {
+
+      const res =
+        await fetch(
+          API + "/api/download",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body:
+              JSON.stringify({
+                url: item.url,
+                quality: item.quality,
+                type: item.type
+              })
+          }
+        );
+
+
+      const data =
+        await readJson(res);
+
+
+      if (!res.ok) {
+
+        throw new Error(
+          data.error ||
+          "Couldn't start the download."
+        );
+      }
+
+
+      trackJob(data.id);
+
+    } catch (error) {
+
+      activeJob = null;
+
+      hideProgress();
+
+      showStatus(
+        error.message ||
+        "Couldn't start the download.",
+        "error"
+      );
+    }
+  }
+
+
+  function trackJob(id) {
+
+    const source =
+      new EventSource(
+        `${API}/api/jobs/${id}/events`
+      );
+
+    activeJob = { id, source };
+
+
+    source.onmessage = event => {
+
+      renderJob(
+        JSON.parse(event.data)
+      );
+
+    };
+
+
+    /* EventSource reconnects by itself; stop only if the job is gone */
+
+    source.onerror = async () => {
+
+      const res =
+        await fetch(`${API}/api/jobs/${id}`)
+          .catch(() => null);
+
+
+      if (
+        activeJob?.id === id &&
+        res &&
+        res.status === 404
+      ) {
+
+        closeJob();
+
+        hideProgress();
+
+        showStatus(
+          "This download expired. Please try again.",
+          "error"
+        );
+      }
+    };
+  }
+
+
+  function renderJob(job) {
+
+    if (job.status === "queued") {
+
+      showProgress(
+        `Waiting in queue (#${job.queuePosition})…`,
+        null,
+        "The server is busy with other downloads"
+      );
+
+    } else if (job.status === "downloading") {
+
+      showProgress(
+        job.message || "Downloading…",
+        job.percent,
+        [
+          job.speed,
+          job.eta && "ETA " + job.eta
+        ].filter(Boolean).join(" • ")
+      );
+
+    } else if (job.status === "processing") {
+
+      showProgress(
+        job.message || "Processing…",
+        null,
+        "Almost done"
+      );
+
+    } else if (job.status === "done") {
+
+      closeJob();
+
+      showProgress(
+        "Download ready!",
+        100,
+        ""
+      );
+
+      showStatus(
+        "✓ Saving " + job.filename
+      );
+
+      window.location.href =
+        `${API}/api/jobs/${job.id}/file`;
+
+      setTimeout(hideProgress, 3000);
 
     } else {
 
-      statusElement.innerHTML =
-        '<i class="fa-solid fa-download"></i> Preparing your video...';
+      closeJob();
 
+      hideProgress();
+
+      showStatus(
+        job.status === "cancelled"
+          ? "Download cancelled."
+          : job.error || "Download failed.",
+        job.status === "cancelled"
+          ? ""
+          : "error"
+      );
     }
+  }
 
 
-    const downloadUrl =
-      `${API}/download?url=${encodeURIComponent(
-        currentUrl
-      )}&quality=${encodeURIComponent(
-        quality
-      )}&type=${encodeURIComponent(
-        type
-      )}`;
+  async function cancelDownload() {
+
+    if (!activeJob?.id) return;
+
+    await fetch(
+      `${API}/api/jobs/${activeJob.id}/cancel`,
+      { method: "POST" }
+    ).catch(() => null);
+  }
 
 
-    window.open(
-      downloadUrl,
-      "_blank"
-    );
+  function closeJob() {
+
+    activeJob?.source?.close();
+
+    activeJob = null;
+  }
+
+
+  /* =========================
+     PROGRESS UI
+  ========================= */
+
+  /* percent = null shows an animated "busy" bar */
+
+  function showProgress(
+    label,
+    percent,
+    meta
+  ) {
+
+    progressBox.hidden = false;
+
+    progressLabel.innerText = label;
+
+    progressMeta.innerText = meta || "";
+
+
+    if (percent === null) {
+
+      progressBar.classList.add("busy");
+
+      progressPercent.innerText = "";
+
+    } else {
+
+      progressBar.classList.remove("busy");
+
+      progressBar.style.width =
+        percent + "%";
+
+      progressPercent.innerText =
+        Math.round(percent) + "%";
+    }
+  }
+
+
+  function hideProgress() {
+
+    progressBox.hidden = true;
+
+    progressBar.style.width = "0";
+  }
+
+
+  function showStatus(
+    message,
+    kind
+  ) {
+
+    statusElement.innerText =
+      message;
+
+    statusElement.style.color =
+      kind === "error"
+        ? "#ff6b6b"
+        : "";
+  }
+
+
+  /* =========================
+     HELPERS
+  ========================= */
+
+  /* Error pages from the host (e.g. while the server wakes up) are not JSON */
+
+  async function readJson(res) {
+
+    try {
+
+      return await res.json();
+
+    } catch {
+
+      return {
+        error:
+          "The server isn't responding right now. Please try again in a moment."
+      };
+    }
+  }
+
+
+  function describeVideoQuality(quality) {
+
+    const height =
+      parseInt(quality, 10);
+
+
+    if (height >= 2160) return "4K MP4 Video";
+
+    if (height >= 1440) return "2K MP4 Video";
+
+    if (height >= 1080) return "Full HD MP4 Video";
+
+    if (height >= 720) return "HD MP4 Video";
+
+    if (height) return "MP4 Video";
+
+    return "Best available quality";
   }
 
 
