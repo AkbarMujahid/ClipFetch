@@ -2,14 +2,20 @@
 <html>
 <head>
   <title>ClipFetch</title>
-  <meta name="viewport" content="width=device-width">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <link rel="icon" type="image/png" href="../logo.png">
+  <link rel="icon" type="image/png" href="/logo.png">
 
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <link
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    rel="stylesheet"
+  >
 
   <style>
-    * { box-sizing: border-box; font-family: 'Segoe UI'; }
+    * {
+      box-sizing: border-box;
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
 
     html {
       scroll-behavior: smooth;
@@ -26,16 +32,31 @@
       overflow-y: auto;
       overflow-x: hidden;
 
-      background: linear-gradient(-45deg, #0f2027, #203a43, #2c5364, #1e3c72);
+      background: linear-gradient(
+        -45deg,
+        #0f2027,
+        #203a43,
+        #2c5364,
+        #1e3c72
+      );
+
       background-size: 400% 400%;
       animation: gradientBG 12s ease infinite;
       transition: 0.3s;
     }
 
     @keyframes gradientBG {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
+      0% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0% 50%;
+      }
     }
 
     body.light {
@@ -51,23 +72,35 @@
     }
 
     .card {
-      background: rgba(255,255,255,0.06);
+      background: rgba(255, 255, 255, 0.06);
       backdrop-filter: blur(18px);
       border-radius: 20px;
       padding: 28px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+
       animation: float 4s ease-in-out infinite;
     }
 
     @keyframes float {
-      0%,100% { transform: translateY(0); }
-      50% { transform: translateY(-6px); }
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-6px);
+      }
     }
 
     body.light .card {
       background: white;
       color: black;
     }
+
+    /* =========================
+       TOP BAR
+    ========================= */
 
     .top-bar {
       display: flex;
@@ -88,19 +121,23 @@
       width: 50px;
       height: 50px;
       border-radius: 14px;
-      box-shadow: 0 0 20px rgba(0,198,255,0.6);
+
+      box-shadow: 0 0 20px rgba(0, 198, 255, 0.6);
+
       transition: 0.3s;
     }
 
     .logo:hover {
       transform: scale(1.1) rotate(5deg);
-      box-shadow: 0 0 30px rgba(255,0,204,0.8);
+      box-shadow: 0 0 30px rgba(255, 0, 204, 0.8);
     }
 
     .brand-text {
-      background: linear-gradient(90deg,#00c6ff,#ff00cc);
+      background: linear-gradient(90deg, #00c6ff, #ff00cc);
+
       -webkit-background-clip: text;
       background-clip: text;
+
       -webkit-text-fill-color: transparent;
       color: transparent;
     }
@@ -115,19 +152,27 @@
       transform: rotate(20deg) scale(1.2);
     }
 
+    /* =========================
+       INPUT
+    ========================= */
+
     .input-group {
       display: flex;
       align-items: center;
-      background: rgba(255,255,255,0.1);
+
+      background: rgba(255, 255, 255, 0.1);
+
       border-radius: 14px;
       padding: 12px;
       margin-top: 15px;
+
       transition: 0.3s;
     }
 
     .input-group:focus-within {
-      background: rgba(255,255,255,0.2);
-      box-shadow: 0 0 10px rgba(30,136,229,0.5);
+      background: rgba(255, 255, 255, 0.2);
+
+      box-shadow: 0 0 10px rgba(30, 136, 229, 0.5);
     }
 
     body.light .input-group {
@@ -142,96 +187,548 @@
 
     input {
       flex: 1;
+
       border: none;
       background: transparent;
       outline: none;
+
       color: inherit;
+
       font-size: 16px;
+      min-width: 0;
     }
+
+    input::placeholder {
+      color: rgba(255, 255, 255, 0.65);
+    }
+
+    body.light input::placeholder {
+      color: #777;
+    }
+
+    /* =========================
+       MAIN BUTTON
+    ========================= */
 
     .btn {
       margin-top: 14px;
+
       padding: 14px;
       width: 100%;
+
       border-radius: 14px;
       border: none;
-      background: linear-gradient(90deg,#1e88e5,#42a5f5);
+
+      background: linear-gradient(90deg, #1e88e5, #42a5f5);
+
       color: white;
+
       cursor: pointer;
       font-size: 16px;
+
       transition: 0.3s;
     }
 
     .btn:hover {
-      transform: scale(1.05);
-      box-shadow: 0 10px 25px rgba(30,136,229,0.5);
+      transform: scale(1.03);
+
+      box-shadow: 0 10px 25px rgba(30, 136, 229, 0.5);
     }
 
-    .formats {
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* =========================
+       LOADER
+    ========================= */
+
+    .spinner {
+      display: none;
+
+      margin: 18px auto;
+
+      width: 42px;
+      height: 42px;
+
+      border: 4px solid rgba(255, 255, 255, 0.2);
+      border-top: 4px solid #1e88e5;
+
+      border-radius: 50%;
+
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* =========================
+       VIDEO INFORMATION
+    ========================= */
+
+    #title {
       margin-top: 18px;
-      scroll-margin-top: 20px;
-    }
+      margin-bottom: 8px;
 
-    .format-btn {
-      background: rgba(255,255,255,0.08);
-      padding: 12px;
-      margin: 6px 0;
-      border-radius: 14px;
-      cursor: pointer;
-      transition: 0.3s;
-      text-align: center;
-    }
-
-    .format-btn:hover {
-      transform: translateY(-3px) scale(1.02);
-      background: rgba(255,255,255,0.2);
+      font-size: 18px;
+      line-height: 1.4;
     }
 
     #thumbnail {
       width: 100%;
+
       margin-top: 12px;
+
       border-radius: 14px;
+
       display: none;
+
+      max-height: 280px;
+      object-fit: cover;
     }
+
+    /* =========================
+       FORMAT SECTION
+    ========================= */
+
+    .formats {
+      margin-top: 20px;
+
+      scroll-margin-top: 20px;
+    }
+
+    /* =========================
+       VIDEO / AUDIO TABS
+    ========================= */
+
+    .mode-tabs {
+      display: flex;
+
+      width: 100%;
+
+      margin-bottom: 12px;
+
+      border-radius: 12px;
+
+      overflow: hidden;
+
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .mode-tab {
+      flex: 1;
+
+      border: none;
+
+      padding: 13px 10px;
+
+      background: transparent;
+
+      color: rgba(255, 255, 255, 0.65);
+
+      font-size: 15px;
+
+      font-weight: 600;
+
+      cursor: pointer;
+
+      transition: 0.3s;
+    }
+
+    .mode-tab:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .mode-tab.active {
+      background: rgba(255, 255, 255, 0.15);
+
+      color: white;
+
+      box-shadow: inset 0 -2px 0 #42a5f5;
+    }
+
+    body.light .mode-tabs {
+      background: #eee;
+    }
+
+    body.light .mode-tab {
+      color: #777;
+    }
+
+    body.light .mode-tab.active {
+      background: white;
+      color: #111;
+    }
+
+    /* =========================
+       FORMAT ITEMS
+    ========================= */
+
+    .format-btn {
+      display: flex;
+
+      align-items: center;
+
+      justify-content: space-between;
+
+      gap: 12px;
+
+      background: rgba(255, 255, 255, 0.08);
+
+      padding: 13px;
+
+      margin: 8px 0;
+
+      border-radius: 14px;
+
+      cursor: pointer;
+
+      transition: 0.3s;
+
+      text-align: left;
+    }
+
+    .format-btn:hover {
+      transform: translateY(-3px);
+
+      background: rgba(255, 255, 255, 0.16);
+
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    body.light .format-btn {
+      background: #f1f1f1;
+    }
+
+    body.light .format-btn:hover {
+      background: #e5e5e5;
+    }
+
+    .format-info {
+      display: flex;
+
+      align-items: center;
+
+      gap: 10px;
+
+      min-width: 0;
+    }
+
+    .format-icon {
+      width: 38px;
+      height: 38px;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 10px;
+
+      background: rgba(30, 136, 229, 0.18);
+
+      color: #42a5f5;
+
+      flex-shrink: 0;
+    }
+
+    .audio-format .format-icon {
+      background: rgba(255, 0, 204, 0.15);
+
+      color: #ff4bd8;
+    }
+
+    .format-text {
+      display: flex;
+
+      flex-direction: column;
+
+      gap: 2px;
+
+      min-width: 0;
+    }
+
+    .format-quality {
+      font-weight: 600;
+
+      font-size: 15px;
+    }
+
+    .format-description {
+      font-size: 12px;
+
+      color: rgba(255, 255, 255, 0.55);
+    }
+
+    body.light .format-description {
+      color: #777;
+    }
+
+    .download-label {
+      display: flex;
+
+      align-items: center;
+
+      gap: 6px;
+
+      background: #42a5f5;
+
+      padding: 9px 12px;
+
+      border-radius: 9px;
+
+      color: white;
+
+      font-size: 13px;
+
+      font-weight: 600;
+
+      flex-shrink: 0;
+    }
+
+    .audio-format .download-label {
+      background: #d633a6;
+    }
+
+    /* =========================
+       STATUS
+    ========================= */
 
     #status {
       text-align: center;
+
       margin-top: 12px;
+
       font-size: 14px;
+
       color: #ccc;
+
+      line-height: 1.5;
     }
 
-    .spinner {
-      display: none;
-      margin: 18px auto;
-      width: 42px;
-      height: 42px;
-      border: 4px solid rgba(255,255,255,0.2);
-      border-top: 4px solid #1e88e5;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
+    body.light #status {
+      color: #555;
     }
 
-    /* 🔥 HISTORY */
+    /* =========================
+       HISTORY
+    ========================= */
+
     .history {
-      margin-top: 20px;
+      margin-top: 24px;
+    }
+
+    .history-header {
+      display: flex;
+
+      justify-content: space-between;
+
+      align-items: center;
+    }
+
+    .history-header h4 {
+      margin: 0 0 10px 0;
+    }
+
+    .clear-history {
+      cursor: pointer;
+
+      font-size: 12px;
+
+      color: #ff6b6b;
+
+      margin-bottom: 10px;
     }
 
     .history-item {
-      padding: 8px;
-      margin-bottom: 5px;
-      border-radius: 8px;
-      background: rgba(255,255,255,0.08);
+      display: flex;
+
+      justify-content: space-between;
+
+      align-items: center;
+
+      gap: 10px;
+
+      padding: 9px;
+
+      margin-bottom: 7px;
+
+      border-radius: 10px;
+
+      background: rgba(255, 255, 255, 0.08);
+
       font-size: 13px;
-      cursor: pointer;
+
+      transition: 0.3s;
     }
 
     .history-item:hover {
-      background: rgba(255,255,255,0.2);
+      background: rgba(255, 255, 255, 0.16);
     }
 
-    @keyframes spin {
-      100% { transform: rotate(360deg); }
+    .history-left {
+      display: flex;
+
+      align-items: center;
+
+      gap: 10px;
+
+      min-width: 0;
+    }
+
+    .history-left img {
+      width: 50px;
+      height: 35px;
+
+      object-fit: cover;
+
+      border-radius: 6px;
+
+      flex-shrink: 0;
+    }
+
+    .history-text {
+      overflow: hidden;
+    }
+
+    .history-title {
+      white-space: nowrap;
+
+      overflow: hidden;
+
+      text-overflow: ellipsis;
+
+      max-width: 230px;
+    }
+
+    .history-type {
+      font-size: 11px;
+
+      color: rgba(255, 255, 255, 0.5);
+
+      margin-top: 2px;
+    }
+
+    body.light .history-item {
+      background: #f1f1f1;
+    }
+
+    body.light .history-type {
+      color: #777;
+    }
+
+    .redownload-btn {
+      border: none;
+
+      background: rgba(30, 136, 229, 0.18);
+
+      color: #42a5f5;
+
+      padding: 7px 9px;
+
+      border-radius: 8px;
+
+      cursor: pointer;
+
+      font-size: 12px;
+
+      flex-shrink: 0;
+    }
+
+    .redownload-btn:hover {
+      background: #1e88e5;
+
+      color: white;
+    }
+
+    /* =========================
+       EMPTY / ERROR
+    ========================= */
+
+    .empty-message {
+      text-align: center;
+
+      padding: 15px;
+
+      color: rgba(255, 255, 255, 0.6);
+
+      font-size: 14px;
+    }
+
+    body.light .empty-message {
+      color: #777;
+    }
+
+    /* =========================
+       MOBILE
+    ========================= */
+
+    @media (max-width: 600px) {
+      body {
+        align-items: flex-start;
+      }
+
+      .app {
+        padding: 15px;
+        margin-top: 15px;
+      }
+
+      .card {
+        padding: 20px;
+
+        border-radius: 18px;
+      }
+
+      .app-title {
+        font-size: 21px;
+      }
+
+      .logo {
+        width: 44px;
+        height: 44px;
+      }
+
+      .format-btn {
+        padding: 11px;
+      }
+
+      .download-label {
+        padding: 8px 10px;
+
+        font-size: 12px;
+      }
+
+      .history-title {
+        max-width: 150px;
+      }
+    }
+
+    @media (max-width: 400px) {
+      .card {
+        padding: 16px;
+      }
+
+      .mode-tab {
+        font-size: 14px;
+      }
+
+      .format-description {
+        display: none;
+      }
+
+      .download-label {
+        padding: 8px;
+      }
+
+      .download-label span {
+        display: none;
+      }
     }
   </style>
 </head>
@@ -241,206 +738,1228 @@
 <div class="app">
   <div class="card">
 
+    <!-- =========================
+         TOP BAR
+    ========================= -->
+
     <div class="top-bar">
+
       <div class="app-title">
-        <img src="../logo.png" class="logo">
-        <span class="brand-text">ClipFetch</span>
+
+        <img src="/logo.png" class="logo" alt="ClipFetch">
+
+        <span class="brand-text">
+          ClipFetch
+        </span>
+
       </div>
 
-      <div class="toggle" onclick="toggleTheme()">
-        <i id="themeIcon" class="fa-solid fa-sun"></i>
+      <div
+        class="toggle"
+        onclick="toggleTheme()"
+        title="Toggle theme"
+      >
+        <i
+          id="themeIcon"
+          class="fa-solid fa-sun"
+        ></i>
       </div>
+
     </div>
+
+
+    <!-- =========================
+         URL INPUT
+    ========================= -->
 
     <div class="input-group">
-      <i id="platformIcon" class="fa-solid fa-link"></i>
-      <input id="url" placeholder="Paste video link">
+
+      <i
+        id="platformIcon"
+        class="fa-solid fa-link"
+      ></i>
+
+      <input
+        id="url"
+        type="text"
+        placeholder="Paste video link"
+        autocomplete="off"
+      >
+
     </div>
 
-    <button class="btn" onclick="getFormats()">Get Formats</button>
 
-    <div id="loader" class="spinner"></div>
+    <!-- =========================
+         FETCH BUTTON
+    ========================= -->
+
+    <button
+      id="fetchBtn"
+      class="btn"
+      onclick="getFormats()"
+    >
+      <i class="fa-solid fa-wand-magic-sparkles"></i>
+      Get Formats
+    </button>
+
+
+    <!-- =========================
+         LOADER
+    ========================= -->
+
+
+
+
+    <!-- =========================
+         VIDEO INFO
+    ========================= -->
 
     <h3 id="title"></h3>
-    <img id="thumbnail">
 
-    <div id="formats" class="formats"></div>
+    <img
+      id="thumbnail"
+      alt="Video thumbnail"
+    >
+
+
+    <!-- =========================
+         FORMAT AREA
+    ========================= -->
+
+    <div
+      id="formats"
+      class="formats"
+    ></div>
+
+
+    <!-- =========================
+         STATUS
+    ========================= -->
+
     <div id="status"></div>
 
-    <!-- 🔥 HISTORY UI -->
+
+    <!-- =========================
+         HISTORY
+    ========================= -->
+
     <div class="history">
-  <div style="display:flex; justify-content:space-between; align-items:center;">
-    <h4>Recent Downloads</h4>
-    <span onclick="clearHistory()" style="cursor:pointer; font-size:12px; color:#ff6b6b;">
-      Clear
-    </span>
-  </div>
 
-  <div id="historyList"></div>
+      <div class="history-header">
+
+        <h4>
+          Recent Downloads
+        </h4>
+
+        <span
+          class="clear-history"
+          onclick="clearHistory()"
+        >
+          Clear
+        </span>
+
+      </div>
+
+      <div id="historyList"></div>
+
+    </div>
+
+  </div>
 </div>
 
-  </div>
-</div>
 
 <script>
-const API = "";
-const themeIcon = document.getElementById("themeIcon");
 
-// LOAD HISTORY
-function loadHistory() {
-  const list = document.getElementById("historyList");
-  list.innerHTML = "";
+  /* =========================
+     API
+  ========================= */
 
-  const history = JSON.parse(localStorage.getItem("history")) || [];
+  const API = "";
 
-  history.forEach(item => {
-    const div = document.createElement("div");
-    div.className = "history-item";
 
-    const left = document.createElement("div");
-    left.style.display = "flex";
-    left.style.alignItems = "center";
-    left.style.gap = "10px";
+  /* =========================
+     GLOBAL STATE
+  ========================= */
 
-    const img = document.createElement("img");
-    img.src = item.thumbnail || "";
-    img.style.width = "50px";
-    img.style.height = "35px";
-    img.style.objectFit = "cover";
-    img.style.borderRadius = "6px";
+  let currentVideoData = null;
 
-    const text = document.createElement("div");
-    text.className = "history-text";
-    text.innerText = (item.title || "Video") + " • " + item.quality;
+  let currentUrl = "";
 
-    left.appendChild(img);
-    left.appendChild(text);
+  let currentMode = "video";
 
-    const btn = document.createElement("button");
-    btn.className = "redownload-btn";
-    btn.innerText = "Download";
 
-    btn.onclick = () => {
-      window.open(`${API}/download?url=${encodeURIComponent(item.url)}&quality=${item.quality}`, "_blank");
+  const themeIcon =
+    document.getElementById("themeIcon");
+
+  const urlInput =
+    document.getElementById("url");
+
+  const formatsContainer =
+    document.getElementById("formats");
+
+  const statusElement =
+    document.getElementById("status");
+
+  const loader =
+    document.getElementById("loader");
+
+  const fetchBtn =
+    document.getElementById("fetchBtn");
+
+
+  /* =========================
+     LOAD HISTORY
+  ========================= */
+
+  function loadHistory() {
+
+    const list =
+      document.getElementById("historyList");
+
+    list.innerHTML = "";
+
+    const history =
+      JSON.parse(
+        localStorage.getItem("history")
+      ) || [];
+
+
+    if (history.length === 0) {
+
+      const empty =
+        document.createElement("div");
+
+      empty.className =
+        "empty-message";
+
+      empty.innerText =
+        "Your downloads will appear here.";
+
+      list.appendChild(empty);
+
+      return;
+    }
+
+
+    history.forEach(item => {
+
+      const div =
+        document.createElement("div");
+
+      div.className =
+        "history-item";
+
+
+      const left =
+        document.createElement("div");
+
+      left.className =
+        "history-left";
+
+
+      const img =
+        document.createElement("img");
+
+      img.src =
+        item.thumbnail || "/logo.png";
+
+      img.alt =
+        "Thumbnail";
+
+
+      const textContainer =
+        document.createElement("div");
+
+      textContainer.className =
+        "history-text";
+
+
+      const title =
+        document.createElement("div");
+
+      title.className =
+        "history-title";
+
+      title.innerText =
+        item.title || "Video";
+
+
+      const type =
+        document.createElement("div");
+
+      type.className =
+        "history-type";
+
+
+      if (item.type === "audio") {
+
+        type.innerText =
+          "🎵 MP3 • " +
+          (item.quality || "Audio");
+
+      } else {
+
+        type.innerText =
+          "🎬 Video • " +
+          (item.quality || "Video");
+
+      }
+
+
+      textContainer.appendChild(title);
+
+      textContainer.appendChild(type);
+
+
+      left.appendChild(img);
+
+      left.appendChild(textContainer);
+
+
+      const btn =
+        document.createElement("button");
+
+      btn.className =
+        "redownload-btn";
+
+      btn.innerHTML =
+        '<i class="fa-solid fa-download"></i>';
+
+
+      btn.title =
+        "Download again";
+
+
+      btn.onclick = () => {
+
+        const downloadUrl =
+          `${API}/download?url=${encodeURIComponent(
+            item.url
+          )}&quality=${encodeURIComponent(
+            item.quality
+          )}&type=${encodeURIComponent(
+            item.type || "video"
+          )}`;
+
+
+        window.open(
+          downloadUrl,
+          "_blank"
+        );
+      };
+
+
+      div.appendChild(left);
+
+      div.appendChild(btn);
+
+      list.appendChild(div);
+
+    });
+  }
+
+
+  /* =========================
+     SAVE HISTORY
+  ========================= */
+
+  function saveHistory(
+    url,
+    quality,
+    title,
+    thumbnail,
+    type
+  ) {
+
+    let history =
+      JSON.parse(
+        localStorage.getItem("history")
+      ) || [];
+
+
+    history = history.filter(item =>
+      !(
+        item.url === url &&
+        item.quality === quality &&
+        item.type === type
+      )
+    );
+
+
+    history.unshift({
+      url,
+      quality,
+      title,
+      thumbnail,
+      type
+    });
+
+
+    if (history.length > 10) {
+
+      history.pop();
+
+    }
+
+
+    localStorage.setItem(
+      "history",
+      JSON.stringify(history)
+    );
+  }
+
+
+  /* =========================
+     CLEAR HISTORY
+  ========================= */
+
+  function clearHistory() {
+
+    localStorage.removeItem("history");
+
+    loadHistory();
+  }
+
+
+  /* =========================
+     THEME
+  ========================= */
+
+  window.onload = () => {
+
+    loadHistory();
+
+
+    const saved =
+      localStorage.getItem("theme") ||
+      "dark";
+
+
+    if (saved === "light") {
+
+      document.body.classList.add(
+        "light"
+      );
+
+      themeIcon.className =
+        "fa-solid fa-moon";
+
+    }
+
+  };
+
+
+  function toggleTheme() {
+
+    const isLight =
+      document.body.classList.contains(
+        "light"
+      );
+
+
+    if (isLight) {
+
+      document.body.classList.remove(
+        "light"
+      );
+
+      localStorage.setItem(
+        "theme",
+        "dark"
+      );
+
+      themeIcon.className =
+        "fa-solid fa-sun";
+
+    } else {
+
+      document.body.classList.add(
+        "light"
+      );
+
+      localStorage.setItem(
+        "theme",
+        "light"
+      );
+
+      themeIcon.className =
+        "fa-solid fa-moon";
+
+    }
+  }
+
+
+  /* =========================
+     PLATFORM ICON
+  ========================= */
+
+  urlInput.addEventListener(
+    "input",
+    function () {
+
+      const url =
+        this.value.toLowerCase();
+
+      const icon =
+        document.getElementById(
+          "platformIcon"
+        );
+
+
+      if (
+        url.includes("youtube") ||
+        url.includes("youtu.be")
+      ) {
+
+        icon.className =
+          "fa-brands fa-youtube";
+
+        icon.style.color =
+          "#FF0000";
+
+      }
+
+      else if (
+        url.includes("instagram")
+      ) {
+
+        icon.className =
+          "fa-brands fa-instagram";
+
+        icon.style.color =
+          "#E1306C";
+
+      }
+
+      else if (
+        url.includes("facebook") ||
+        url.includes("fb.watch")
+      ) {
+
+        icon.className =
+          "fa-brands fa-facebook";
+
+        icon.style.color =
+          "#1877F2";
+
+      }
+
+      else {
+
+        icon.className =
+          "fa-solid fa-link";
+
+        icon.style.color =
+          "#ccc";
+      }
+
+    }
+  );
+
+
+  /* =========================
+     GET FORMATS
+  ========================= */
+
+  async function getFormats() {
+
+    const url =
+      urlInput.value.trim();
+
+
+    if (!url) {
+
+      alert(
+        "Please paste a video link first."
+      );
+
+      return;
+    }
+
+
+    currentUrl = url;
+
+
+    /* Clear previous results */
+
+    formatsContainer.innerHTML = "";
+
+    document.getElementById(
+      "title"
+    ).innerText = "";
+
+    document.getElementById(
+      "thumbnail"
+    ).style.display = "none";
+
+    statusElement.innerText = "";
+
+
+    /* Show loader */
+
+    
+
+    fetchBtn.disabled =
+      true;
+
+    fetchBtn.innerHTML =
+      '<i class="fa-solid fa-spinner fa-spin"></i> Fetching...';
+
+
+    try {
+
+      const res =
+        await fetch(
+          API + "/formats",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body:
+              JSON.stringify({
+                url
+              })
+          }
+        );
+
+
+      const data =
+        await res.json();
+
+
+      if (!res.ok) {
+
+        throw new Error(
+          data.error ||
+          "Unable to fetch video information."
+        );
+      }
+
+
+      currentVideoData =
+        data;
+
+
+      document.getElementById(
+        "title"
+      ).innerText =
+        data.title || "Video";
+
+
+      if (data.thumbnail) {
+
+        const img =
+          document.getElementById(
+            "thumbnail"
+          );
+
+        img.src =
+          data.thumbnail;
+
+        img.style.display =
+          "block";
+      }
+
+
+      renderModeTabs(
+        data.formats || []
+      );
+
+
+      renderVideoFormats(
+        data.formats || []
+      );
+
+
+      setTimeout(() => {
+
+        formatsContainer.scrollIntoView({
+          behavior: "smooth",
+          block: "start"
+        });
+
+      }, 200);
+
+
+    } catch (error) {
+
+      console.error(
+        "FORMAT ERROR:",
+        error
+      );
+
+
+      statusElement.innerText =
+        error.message ||
+        "Something went wrong while fetching the video.";
+
+
+      statusElement.style.color =
+        "#ff6b6b";
+
+    } finally {
+
+      
+
+      fetchBtn.disabled =
+        false;
+
+      fetchBtn.innerHTML =
+        '<i class="fa-solid fa-wand-magic-sparkles"></i> Get Formats';
+
+    }
+  }
+
+
+  /* =========================
+     MODE TABS
+  ========================= */
+
+  function renderModeTabs(
+    videoFormats
+  ) {
+
+    formatsContainer.innerHTML = "";
+
+
+    const tabs =
+      document.createElement(
+        "div"
+      );
+
+    tabs.className =
+      "mode-tabs";
+
+
+    const videoTab =
+      document.createElement(
+        "button"
+      );
+
+    videoTab.className =
+      "mode-tab active";
+
+    videoTab.innerHTML =
+      '<i class="fa-solid fa-video"></i> Video';
+
+
+    const audioTab =
+      document.createElement(
+        "button"
+      );
+
+    audioTab.className =
+      "mode-tab";
+
+    audioTab.innerHTML =
+      '<i class="fa-solid fa-music"></i> Audio';
+
+
+    videoTab.onclick = () => {
+
+      currentMode =
+        "video";
+
+
+      videoTab.classList.add(
+        "active"
+      );
+
+      audioTab.classList.remove(
+        "active"
+      );
+
+
+      renderVideoFormats(
+        currentVideoData.formats || []
+      );
+
     };
 
-    div.appendChild(left);
-    div.appendChild(btn);
 
-    list.appendChild(div);
-  });
-}
+    audioTab.onclick = () => {
 
-// SAVE HISTORY
-function saveHistory(url, quality, title, thumbnail) {
-  let history = JSON.parse(localStorage.getItem("history")) || [];
+      currentMode =
+        "audio";
 
-  history.unshift({ url, quality, title, thumbnail });
 
-  if (history.length > 10) history.pop();
+      audioTab.classList.add(
+        "active"
+      );
 
-  localStorage.setItem("history", JSON.stringify(history));
-}
+      videoTab.classList.remove(
+        "active"
+      );
 
-// CLEAR HISTORY
-function clearHistory() {
-  localStorage.removeItem("history");
-  loadHistory();
-}
 
-// THEME (unchanged)
-window.onload = () => {
-  loadHistory();
-  const saved = localStorage.getItem("theme") || "dark";
-  if (saved === "light") {
-    document.body.classList.add("light");
-    themeIcon.className = "fa-solid fa-moon";
-  }
-};
+      renderAudioFormats();
 
-function toggleTheme() {
-  const isLight = document.body.classList.contains("light");
-
-  if (isLight) {
-    document.body.classList.remove("light");
-    localStorage.setItem("theme", "dark");
-    themeIcon.className = "fa-solid fa-sun";
-  } else {
-    document.body.classList.add("light");
-    localStorage.setItem("theme", "light");
-    themeIcon.className = "fa-solid fa-moon";
-  }
-}
-
-// PLATFORM ICON (unchanged)
-document.getElementById("url").addEventListener("input", function () {
-  const url = this.value.toLowerCase();
-  const icon = document.getElementById("platformIcon");
-
-  if (url.includes("youtube") || url.includes("youtu.be")) {
-    icon.className = "fa-brands fa-youtube";
-    icon.style.color = "#FF0000";
-  }
-  else if (url.includes("instagram")) {
-    icon.className = "fa-brands fa-instagram";
-    icon.style.color = "#E1306C";
-  }
-  else if (url.includes("facebook") || url.includes("fb.watch")) {
-    icon.className = "fa-brands fa-facebook";
-    icon.style.color = "#1877F2";
-  }
-  else {
-    icon.className = "fa-solid fa-link";
-    icon.style.color = "#ccc";
-  }
-});
-
-// GET FORMATS (only added saveHistory)
-async function getFormats() {
-  const url = document.getElementById("url").value;
-  if (!url) return alert("Paste link");
-
-  document.getElementById("loader").style.display = "block";
-
-  const res = await fetch(API + "/formats", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({url})
-  });
-
-  const data = await res.json();
-
-  document.getElementById("loader").style.display = "none";
-  document.getElementById("title").innerText = data.title;
-
-  if (data.thumbnail) {
-    const img = document.getElementById("thumbnail");
-    img.src = data.thumbnail;
-    img.style.display = "block";
-  }
-
-  const container = document.getElementById("formats");
-  container.innerHTML = "";
-
-  data.formats.forEach(f => {
-    const div = document.createElement("div");
-    div.className = "format-btn";
-    div.innerText = "Download " + f.quality;
-
-    div.onclick = () => {
-      saveHistory(url, f.quality, data.title, data.thumbnail);
-      loadHistory();
-
-      window.open(`${API}/download?url=${encodeURIComponent(url)}&quality=${f.quality}`, "_blank");
     };
 
-    container.appendChild(div);
-  });
 
-  setTimeout(() => {
-    container.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, 200);
-}
+    tabs.appendChild(
+      videoTab
+    );
+
+    tabs.appendChild(
+      audioTab
+    );
+
+
+    formatsContainer.appendChild(
+      tabs
+    );
+  }
+
+
+  /* =========================
+     VIDEO FORMATS
+  ========================= */
+
+  function renderVideoFormats(
+    formats
+  ) {
+
+    removeFormatItems();
+
+
+    if (!formats.length) {
+
+      showEmpty(
+        "No video qualities available."
+      );
+
+      return;
+    }
+
+
+    formats.forEach(
+      format => {
+
+        const quality =
+          format.quality;
+
+
+        const div =
+          document.createElement(
+            "div"
+          );
+
+        div.className =
+          "format-btn";
+
+
+        const info =
+          document.createElement(
+            "div"
+          );
+
+        info.className =
+          "format-info";
+
+
+        const icon =
+          document.createElement(
+            "div"
+          );
+
+        icon.className =
+          "format-icon";
+
+        icon.innerHTML =
+          '<i class="fa-solid fa-video"></i>';
+
+
+        const text =
+          document.createElement(
+            "div"
+          );
+
+        text.className =
+          "format-text";
+
+
+        const qualityText =
+          document.createElement(
+            "div"
+          );
+
+        qualityText.className =
+          "format-quality";
+
+        qualityText.innerText =
+          quality;
+
+
+        const description =
+          document.createElement(
+            "div"
+          );
+
+        description.className =
+          "format-description";
+
+        description.innerText =
+          "MP4 Video";
+
+
+        text.appendChild(
+          qualityText
+        );
+
+        text.appendChild(
+          description
+        );
+
+
+        info.appendChild(
+          icon
+        );
+
+        info.appendChild(
+          text
+        );
+
+
+        const download =
+          document.createElement(
+            "div"
+          );
+
+        download.className =
+          "download-label";
+
+        download.innerHTML =
+          '<i class="fa-solid fa-download"></i><span>Download</span>';
+
+
+        div.appendChild(
+          info
+        );
+
+        div.appendChild(
+          download
+        );
+
+
+        div.onclick = () => {
+
+          downloadVideo(
+            quality,
+            "video"
+          );
+
+        };
+
+
+        formatsContainer.appendChild(
+          div
+        );
+
+      }
+    );
+  }
+
+
+  /* =========================
+     AUDIO FORMATS
+  ========================= */
+
+  function renderAudioFormats() {
+
+    removeFormatItems();
+
+
+    const audioFormats = [
+      {
+        quality: "320kbps",
+        description: "High Quality MP3"
+      },
+
+      {
+        quality: "256kbps",
+        description: "Good Quality MP3"
+      },
+
+      {
+        quality: "128kbps",
+        description: "Smaller MP3 File"
+      }
+    ];
+
+
+    audioFormats.forEach(
+      format => {
+
+        const div =
+          document.createElement(
+            "div"
+          );
+
+        div.className =
+          "format-btn audio-format";
+
+
+        const info =
+          document.createElement(
+            "div"
+          );
+
+        info.className =
+          "format-info";
+
+
+        const icon =
+          document.createElement(
+            "div"
+          );
+
+        icon.className =
+          "format-icon";
+
+        icon.innerHTML =
+          '<i class="fa-solid fa-music"></i>';
+
+
+        const text =
+          document.createElement(
+            "div"
+          );
+
+        text.className =
+          "format-text";
+
+
+        const qualityText =
+          document.createElement(
+            "div"
+          );
+
+        qualityText.className =
+          "format-quality";
+
+        qualityText.innerText =
+          "MP3 - " +
+          format.quality;
+
+
+        const description =
+          document.createElement(
+            "div"
+          );
+
+        description.className =
+          "format-description";
+
+        description.innerText =
+          format.description;
+
+
+        text.appendChild(
+          qualityText
+        );
+
+        text.appendChild(
+          description
+        );
+
+
+        info.appendChild(
+          icon
+        );
+
+        info.appendChild(
+          text
+        );
+
+
+        const download =
+          document.createElement(
+            "div"
+          );
+
+        download.className =
+          "download-label";
+
+        download.innerHTML =
+          '<i class="fa-solid fa-download"></i><span>Download</span>';
+
+
+        div.appendChild(
+          info
+        );
+
+        div.appendChild(
+          download
+        );
+
+
+        div.onclick = () => {
+
+          downloadVideo(
+            format.quality,
+            "audio"
+          );
+
+        };
+
+
+        formatsContainer.appendChild(
+          div
+        );
+
+      }
+    );
+  }
+
+
+  /* =========================
+     REMOVE OLD FORMAT ITEMS
+  ========================= */
+
+  function removeFormatItems() {
+
+    const tabs =
+      formatsContainer.querySelector(
+        ".mode-tabs"
+      );
+
+
+    formatsContainer.innerHTML = "";
+
+
+    if (tabs) {
+
+      formatsContainer.appendChild(
+        tabs
+      );
+
+    }
+  }
+
+
+  /* =========================
+     EMPTY MESSAGE
+  ========================= */
+
+  function showEmpty(
+    message
+  ) {
+
+    const empty =
+      document.createElement(
+        "div"
+      );
+
+    empty.className =
+      "empty-message";
+
+    empty.innerText =
+      message;
+
+    formatsContainer.appendChild(
+      empty
+    );
+  }
+
+
+  /* =========================
+     DOWNLOAD
+  ========================= */
+
+  function downloadVideo(
+    quality,
+    type
+  ) {
+
+    if (!currentUrl) {
+
+      alert(
+        "Please fetch a video first."
+      );
+
+      return;
+    }
+
+
+    const title =
+      currentVideoData?.title ||
+      "Video";
+
+
+    const thumbnail =
+      currentVideoData?.thumbnail ||
+      "";
+
+
+    saveHistory(
+      currentUrl,
+      quality,
+      title,
+      thumbnail,
+      type
+    );
+
+
+    loadHistory();
+
+
+    statusElement.style.color =
+      "#ccc";
+
+
+    if (type === "audio") {
+
+      statusElement.innerHTML =
+        '<i class="fa-solid fa-music"></i> Preparing your MP3...';
+
+    } else {
+
+      statusElement.innerHTML =
+        '<i class="fa-solid fa-download"></i> Preparing your video...';
+
+    }
+
+
+    const downloadUrl =
+      `${API}/download?url=${encodeURIComponent(
+        currentUrl
+      )}&quality=${encodeURIComponent(
+        quality
+      )}&type=${encodeURIComponent(
+        type
+      )}`;
+
+
+    window.open(
+      downloadUrl,
+      "_blank"
+    );
+  }
+
+
+  /* =========================
+     ENTER KEY
+  ========================= */
+
+  urlInput.addEventListener(
+    "keydown",
+    function (event) {
+
+      if (
+        event.key === "Enter"
+      ) {
+
+        getFormats();
+
+      }
+
+    }
+  );
 
 </script>
 
