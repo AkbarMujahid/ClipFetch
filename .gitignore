@@ -1,3 +1,14 @@
 node_modules
 downloads
 .env
+
+# downloaded media and leftovers
+*.mp4
+*.m4a
+*.webm
+*.mp3
+*.part
+*.ytdl
+
+# never commit login cookies
+cookies.txt

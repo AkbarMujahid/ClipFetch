@@ -1,0 +1,14 @@
+node_modules
+.git
+.gitignore
+.env
+.claude
+downloads
+*.mp4
+*.m4a
+*.webm
+*.mp3
+*.part
+cookies.txt
+render.yaml
+README.md
