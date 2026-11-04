@@ -108,7 +108,11 @@ YouTube often blocks requests from cloud servers ("Sign in to confirm you're not
 1. Create a **separate, throwaway Google account** (the account can get flagged — don't use your main one).
 2. Log in to YouTube with it and export cookies in Netscape format using a "cookies.txt" browser extension.
 3. In Render, open your service → **Environment → Secret Files** → add a file named `cookies.txt` with the exported content.
-4. Redeploy. The server detects `/etc/secrets/cookies.txt` automatically.
+4. Redeploy. The server detects `/etc/secrets/cookies.txt` automatically. Open `/health` and check that it shows `"cookies": true`.
+
+Tips for cookies that last longer: log in using a **private/incognito window**, open youtube.com, export the cookies, then **close the private window without logging out**. YouTube rotates cookies in open browser tabs, which makes exported ones stop working sooner. If YouTube starts failing again later, export fresh cookies.
+
+If YouTube still blocks the server even with cookies, set `YTDLP_PROXY` to a proxy (for example a residential proxy). Most good proxies are paid.
 
 Never commit `cookies.txt` to Git (it's already in `.gitignore`).
 
@@ -135,6 +139,9 @@ All settings are optional environment variables:
 | `ALLOWED_HOSTS` | YouTube, Instagram, Facebook domains | Comma-separated list of allowed sites |
 | `COOKIES_FILE` | `/etc/secrets/cookies.txt` | Cookies file for yt-dlp (used if it exists) |
 | `YTDLP_JS_RUNTIMES` | `node` | JavaScript runtime yt-dlp uses for YouTube (empty to disable) |
+| `YTDLP_PROXY` | (none) | Proxy for yt-dlp, e.g. `http://user:pass@host:port` |
+| `YTDLP_EXTRACTOR_ARGS` | (none) | Extra `--extractor-args` for yt-dlp, e.g. `youtube:player_client=default,tv` |
+| `YTDLP_EXTRACTOR_RETRIES` | `1` | How many times yt-dlp retries a blocked request before failing |
 | `AUTO_UPDATE_YTDLP` | `true` | Docker only: update yt-dlp each time the container starts |
 | `TRUST_PROXY` | `true` on Render, else `false` | Express `trust proxy` setting (for correct visitor IPs) |
 

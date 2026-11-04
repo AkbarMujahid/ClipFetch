@@ -40,6 +40,11 @@ const CONFIG = {
   tmpRoot: env.DOWNLOAD_DIR || path.join(os.tmpdir(), "clipfetch"),
   // Render mounts secret files at /etc/secrets/<name>
   cookiesFile: env.COOKIES_FILE || "/etc/secrets/cookies.txt",
+  // optional extras for when a site blocks the server (e.g. YouTube on cloud hosts)
+  proxy: env.YTDLP_PROXY || "",
+  extractorArgs: env.YTDLP_EXTRACTOR_ARGS || "",
+  // fail fast instead of retrying for a minute when a site blocks us
+  extractorRetries: env.YTDLP_EXTRACTOR_RETRIES || "1",
   allowedHosts: (env.ALLOWED_HOSTS ||
     "youtube.com,youtu.be,youtube-nocookie.com,instagram.com,facebook.com,fb.watch,fb.com")
     .split(",").map(h => h.trim().toLowerCase()).filter(Boolean),
@@ -57,9 +62,16 @@ fs.mkdirSync(CONFIG.tmpRoot, { recursive: true });
 // yt-dlp writes cookies back on exit, so use a writable copy of the secret file
 let cookiesPath = null;
 if (fs.existsSync(CONFIG.cookiesFile)) {
-  cookiesPath = path.join(CONFIG.tmpRoot, "cookies.txt");
-  fs.copyFileSync(CONFIG.cookiesFile, cookiesPath);
-  console.log("Using cookies from", CONFIG.cookiesFile);
+  try {
+    cookiesPath = path.join(CONFIG.tmpRoot, "cookies.txt");
+    fs.copyFileSync(CONFIG.cookiesFile, cookiesPath);
+    console.log("Using cookies from", CONFIG.cookiesFile);
+  } catch (err) {
+    cookiesPath = null;
+    console.log("COULD NOT READ COOKIES FILE:", err.message);
+  }
+} else {
+  console.log("No cookies file found at", CONFIG.cookiesFile);
 }
 
 function toolVersion(cmd, args) {
@@ -107,8 +119,8 @@ function parseQuality(type, raw) {
 function friendlyError(stderr) {
   const s = stderr || "";
 
-  if (/confirm you.?re not a bot|Sign in to confirm/i.test(s))
-    return "YouTube is blocking requests from this server right now. Please try again later.";
+  if (/confirm you.?re not a bot|Sign in to confirm|Failed to extract any player response/i.test(s))
+    return "YouTube is blocking downloads from this server right now. Instagram and Facebook links still work.";
   if (/HTTP Error 403/i.test(s))
     return "The video site refused the download. Please try again in a moment.";
   if (/larger than max-filesize/i.test(s))
@@ -127,8 +139,9 @@ function friendlyError(stderr) {
   return "Couldn't process this video. Check the link and try again.";
 }
 
-function lastLine(text) {
-  return (text || "").trim().split("\n").pop();
+// the final error alone often hides the cause (e.g. an earlier bot-check warning)
+function lastLines(text, count = 6) {
+  return (text || "").trim().split("\n").slice(-count).join("\n  ");
 }
 
 function killTree(proc) {
@@ -147,9 +160,16 @@ function killTree(proc) {
 }
 
 function runYtdlp(args, { timeoutMs, collect = false, onLine } = {}) {
-  const fullArgs = ["-m", "yt_dlp", "--no-playlist", "--socket-timeout", "30"];
+  const fullArgs = [
+    "-m", "yt_dlp",
+    "--no-playlist",
+    "--socket-timeout", "20",
+    "--extractor-retries", CONFIG.extractorRetries
+  ];
   if (CONFIG.jsRuntimes) fullArgs.push("--js-runtimes", CONFIG.jsRuntimes);
   if (cookiesPath) fullArgs.push("--cookies", cookiesPath);
+  if (CONFIG.proxy) fullArgs.push("--proxy", CONFIG.proxy);
+  if (CONFIG.extractorArgs) fullArgs.push("--extractor-args", CONFIG.extractorArgs);
   fullArgs.push(...args);
 
   const proc = spawn(CONFIG.python, fullArgs, {
@@ -397,7 +417,7 @@ async function runJob(job) {
     }
 
     if (code !== 0) {
-      console.log(`JOB ${job.id} FAILED:`, lastLine(stderr));
+      console.log(`JOB ${job.id} FAILED:\n  ${lastLines(stderr)}`);
       return finish(job, { status: "error", error: friendlyError(stderr) }, 120_000);
     }
 
@@ -464,6 +484,8 @@ app.get("/health", (req, res) => {
     status: "ok",
     ytdlp: ytdlpVersion,
     ffmpeg: Boolean(ffmpegVersion),
+    cookies: Boolean(cookiesPath),
+    proxy: Boolean(CONFIG.proxy),
     activeJobs,
     queuedJobs: queue.length
   });
@@ -489,7 +511,7 @@ app.post("/api/formats", rateLimit(CONFIG.infoRateLimit, CONFIG.rateWindowMs), a
   }
 
   if (code !== 0 || !stdout) {
-    console.log("FORMATS FAILED:", lastLine(stderr));
+    console.log(`FORMATS FAILED:\n  ${lastLines(stderr)}`);
     return res.status(502).json({ error: friendlyError(stderr) });
   }
 
