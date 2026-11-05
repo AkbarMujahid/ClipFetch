@@ -46,7 +46,8 @@ ClipFetch/
 ├── package.json
 ├── scripts/
 │   ├── start.sh        # container entrypoint
-│   └── warp.sh         # optional Cloudflare WARP tunnel for YouTube
+│   ├── warp.sh         # optional Cloudflare WARP tunnel for YouTube
+│   └── ytdlp_worker.py # keeps yt-dlp loaded for fast format lookups
 ├── Dockerfile          # image with Node, Python, yt-dlp and FFmpeg
 ├── render.yaml         # Render Blueprint (one-click deploy)
 └── .dockerignore
@@ -62,6 +63,8 @@ ClipFetch/
 4. `GET /api/jobs/:id/file` — sends the finished file to the browser.
 
 Each job downloads into its own temporary folder, which is deleted automatically after the file is sent (or after 15 minutes). This job-based flow avoids the request timeouts that hosting platforms apply to long-running requests.
+
+**Speed:** format lookups run in a long-lived Python process (`scripts/ytdlp_worker.py`) that keeps yt-dlp loaded, instead of starting yt-dlp for every request. Lookup results are cached for 20 minutes, so looking up the same link again is instant, and the download reuses them instead of extracting the video a second time (if the saved links have expired, it retries with a fresh lookup).
 
 `GET /health` reports the server status (used by Render's health check).
 
@@ -154,6 +157,9 @@ All settings are optional environment variables:
 | `MAX_FILESIZE` | `500M` | Largest file allowed |
 | `JOB_TIMEOUT_MINUTES` | `15` | A download is stopped after this long |
 | `FILE_TTL_MINUTES` | `15` | Finished files are deleted after this long |
+| `YTDLP_WORKER` | `true` | Use the long-running lookup worker (`false` = start yt-dlp per lookup) |
+| `INFO_CACHE_MINUTES` | `20` | How long lookup results are reused |
+| `INFO_CACHE_SIZE` | `20` | How many lookup results are kept in memory |
 | `RATE_LIMIT_INFO` | `30` | Format lookups per visitor per 10 minutes |
 | `RATE_LIMIT_DOWNLOAD` | `10` | Downloads per visitor per 10 minutes |
 | `ALLOWED_HOSTS` | YouTube, Instagram, Facebook domains | Comma-separated list of allowed sites |
