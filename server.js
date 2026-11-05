@@ -37,6 +37,10 @@ const CONFIG = {
   jobTimeoutMs: int(env.JOB_TIMEOUT_MINUTES, 15) * 60_000,
   infoTimeoutMs: int(env.INFO_TIMEOUT_SECONDS, 60) * 1000,
   fileTtlMs: int(env.FILE_TTL_MINUTES, 15) * 60_000,
+  useWorker: env.YTDLP_WORKER !== "false",
+  // YouTube's download links stay valid for hours; 20 minutes is a safe reuse window
+  infoCacheMs: int(env.INFO_CACHE_MINUTES, 20) * 60_000,
+  infoCacheSize: int(env.INFO_CACHE_SIZE, 20),
   abandonAfterMs: 60_000,
   infoRateLimit: int(env.RATE_LIMIT_INFO, 30),
   downloadRateLimit: int(env.RATE_LIMIT_DOWNLOAD, 10),
@@ -176,21 +180,31 @@ function proxyFor(url) {
   return "";
 }
 
-function runYtdlp(url, args, { timeoutMs, collect = false, onLine } = {}) {
-  const fullArgs = [
-    "-m", "yt_dlp",
+// options shared by the yt-dlp command and the lookup worker
+function commonOptions(url) {
+  const options = [
     "--no-playlist",
     "--socket-timeout", "20",
     "--extractor-retries", CONFIG.extractorRetries
   ];
-  if (CONFIG.jsRuntimes) fullArgs.push("--js-runtimes", CONFIG.jsRuntimes);
-  if (cookiesPath) fullArgs.push("--cookies", cookiesPath);
-  if (CONFIG.extractorArgs) fullArgs.push("--extractor-args", CONFIG.extractorArgs);
+  if (CONFIG.jsRuntimes) options.push("--js-runtimes", CONFIG.jsRuntimes);
+  if (cookiesPath) options.push("--cookies", cookiesPath);
+  if (CONFIG.extractorArgs) options.push("--extractor-args", CONFIG.extractorArgs);
 
   const proxy = proxyFor(url);
-  if (proxy) fullArgs.push("--proxy", proxy);
+  if (proxy) options.push("--proxy", proxy);
 
-  fullArgs.push(...args, "--", url);
+  return options;
+}
+
+// infoFile: reuse details saved by a format lookup instead of extracting the video again
+function runYtdlp(url, args, { timeoutMs, collect = false, onLine, infoFile } = {}) {
+  const fullArgs = [
+    "-m", "yt_dlp",
+    ...commonOptions(url),
+    ...args,
+    ...(infoFile ? ["--load-info-json", infoFile] : ["--", url])
+  ];
 
   const proc = spawn(CONFIG.python, fullArgs, {
     detached: process.platform !== "win32",
@@ -237,6 +251,134 @@ function runYtdlp(url, args, { timeoutMs, collect = false, onLine } = {}) {
   });
 
   return { proc, done };
+}
+
+// =========================
+// LOOKUP WORKER
+// =========================
+// A long-running Python process (scripts/ytdlp_worker.py) keeps yt-dlp loaded,
+// so format lookups skip several seconds of startup each time.
+const worker = { proc: null, buffer: "", pending: new Map(), nextId: 1 };
+
+function startWorker() {
+  const proc = spawn(CONFIG.python, ["-u", path.join(__dirname, "scripts", "ytdlp_worker.py")], {
+    detached: process.platform !== "win32",
+    windowsHide: true
+  });
+
+  worker.proc = proc;
+  worker.buffer = "";
+
+  proc.stdout.on("data", chunk => {
+    worker.buffer += chunk.toString();
+    const lines = worker.buffer.split("\n");
+    worker.buffer = lines.pop();
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      let reply;
+      try {
+        reply = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      worker.pending.get(reply.id)?.(reply);
+    }
+  });
+
+  // yt-dlp's own console output; only worth seeing when something breaks
+  proc.stderr.on("data", () => {});
+
+  const failAll = message => {
+    if (worker.proc === proc) worker.proc = null;
+    for (const resolve of worker.pending.values()) {
+      resolve({ ok: false, log: message, workerFailed: true });
+    }
+    worker.pending.clear();
+  };
+
+  proc.on("error", err => failAll(`ERROR: lookup worker failed: ${err.message}`));
+  proc.on("close", () => failAll("ERROR: lookup worker stopped"));
+}
+
+function workerLookup(url, args, timeoutMs) {
+  if (!worker.proc) startWorker();
+
+  const id = worker.nextId++;
+
+  return new Promise(resolve => {
+    const timer = setTimeout(() => {
+      worker.pending.delete(id);
+      // the worker is stuck on this lookup; restart it so later lookups aren't blocked
+      killTree(worker.proc);
+      resolve({ ok: false, log: "", timedOut: true });
+    }, timeoutMs);
+
+    worker.pending.set(id, reply => {
+      clearTimeout(timer);
+      worker.pending.delete(id);
+      resolve(reply);
+    });
+
+    worker.proc.stdin.write(JSON.stringify({ id, url, args }) + "\n");
+  });
+}
+
+// Lookups are cached briefly: repeat lookups are instant and downloads can reuse
+// the details instead of extracting the video a second time.
+const infoCache = new Map();
+
+function cachedInfo(url) {
+  const entry = infoCache.get(url);
+  if (!entry) return null;
+  if (Date.now() - entry.at > CONFIG.infoCacheMs || entry.proxy !== proxyFor(url)) {
+    infoCache.delete(url);
+    return null;
+  }
+  return entry.info;
+}
+
+function cacheInfo(url, info) {
+  infoCache.delete(url);
+  infoCache.set(url, { info, at: Date.now(), proxy: proxyFor(url) });
+
+  // keep memory small: video details can be large
+  while (infoCache.size > CONFIG.infoCacheSize) {
+    infoCache.delete(infoCache.keys().next().value);
+  }
+}
+
+// prefers the worker; falls back to a one-off yt-dlp run if the worker can't start
+async function lookupInfo(url) {
+  const cached = cachedInfo(url);
+  if (cached) return { info: cached, log: "" };
+
+  const args = [...commonOptions(url), "--flat-playlist"];
+  let result = CONFIG.useWorker
+    ? await workerLookup(url, args, CONFIG.infoTimeoutMs)
+    : { workerFailed: true };
+
+  if (result.workerFailed) {
+    const run = await runYtdlp(url, ["-J", "--flat-playlist"], {
+      timeoutMs: CONFIG.infoTimeoutMs,
+      collect: true
+    }).done;
+
+    result = { ok: run.code === 0 && Boolean(run.stdout), log: run.stderr, timedOut: run.timedOut };
+    if (result.ok) {
+      try {
+        result.info = JSON.parse(run.stdout);
+      } catch {
+        result = { ok: false, log: "ERROR: Couldn't read this video's details." };
+      }
+    }
+  }
+
+  if (result.timedOut) return { timedOut: true };
+  if (!result.ok) return { error: result.log || "" };
+
+  cacheInfo(url, result.info);
+  return { info: result.info, log: result.log };
 }
 
 // =========================
@@ -464,14 +606,38 @@ async function runJob(job) {
   update(job, { status: "downloading", message: "Starting…", percent: 0 });
 
   try {
-    const { proc, done } = runYtdlp(job.url, downloadArgs(job), {
-      timeoutMs: CONFIG.jobTimeoutMs,
-      onLine: line => handleProgressLine(job, line)
-    });
-    job.proc = proc;
+    // reuse the format lookup's details when we have them; saves a full extraction
+    const info = cachedInfo(job.url);
+    let infoFile = null;
+    if (info) {
+      infoFile = path.join(job.dir, "info.json");
+      fs.writeFileSync(infoFile, JSON.stringify(info));
+    }
 
-    const { code, stderr, timedOut } = await done;
+    const attempt = file => {
+      job.part = 0;
+      const { proc, done } = runYtdlp(job.url, downloadArgs(job), {
+        timeoutMs: CONFIG.jobTimeoutMs,
+        onLine: line => handleProgressLine(job, line),
+        infoFile: file
+      });
+      job.proc = proc;
+      return done;
+    };
+
+    let { code, stderr, timedOut } = await attempt(infoFile);
     job.proc = null;
+
+    // saved download links can expire; try once more with a fresh lookup
+    if (infoFile && code !== 0 && !timedOut && !job.cancelled) {
+      console.log(`JOB ${job.id}: saved details failed, retrying with a fresh lookup:\n  ${lastLines(stderr, 2)}`);
+      infoCache.delete(job.url);
+      update(job, { status: "downloading", message: "Retrying…", percent: 0, speed: "", eta: "" });
+      ({ code, stderr, timedOut } = await attempt(null));
+      job.proc = null;
+    }
+
+    if (infoFile) fs.rmSync(infoFile, { force: true });
 
     if (job.cancelled) return;
 
@@ -567,28 +733,19 @@ app.post("/api/formats", rateLimit(CONFIG.infoRateLimit, CONFIG.rateWindowMs), a
     return res.status(400).json({ error: "Please paste a valid YouTube, Instagram or Facebook link." });
   }
 
-  const { code, stdout, stderr, timedOut } = await runYtdlp(
-    url,
-    ["-J", "--flat-playlist"],
-    { timeoutMs: CONFIG.infoTimeoutMs, collect: true }
-  ).done;
+  const started = Date.now();
+  const { info, error, timedOut } = await lookupInfo(url);
 
   if (timedOut) {
     return res.status(504).json({ error: "The video site took too long to respond. Please try again." });
   }
 
-  if (code !== 0 || !stdout) {
-    console.log(`FORMATS FAILED:\n  ${lastLines(stderr)}`);
-    return res.status(502).json({ error: friendlyError(stderr) });
+  if (!info) {
+    console.log(`FORMATS FAILED:\n  ${lastLines(error)}`);
+    return res.status(502).json({ error: friendlyError(error) });
   }
 
-  let info;
-  try {
-    info = JSON.parse(stdout);
-  } catch (err) {
-    console.log("PARSE ERROR:", err.message);
-    return res.status(502).json({ error: "Couldn't read this video's details." });
-  }
+  console.log(`FORMATS OK in ${Date.now() - started}ms: ${url}`);
 
   if (info._type === "playlist") {
     return res.status(400).json({ error: "Playlists aren't supported. Please paste a single video link." });
@@ -753,10 +910,14 @@ app.use((err, req, res, next) => {
 // =========================
 const server = app.listen(CONFIG.port, () => {
   console.log(`Server running on port ${CONFIG.port}`);
+
+  // load yt-dlp now so the first lookup doesn't pay for it
+  if (CONFIG.useWorker) startWorker();
 });
 
 function shutdown() {
   console.log("Shutting down…");
+  killTree(worker.proc);
   [...jobs.values()].forEach(removeJob);
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 5000).unref();

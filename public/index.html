@@ -1538,6 +1538,11 @@
     }
 
 
+    /* already fetching (e.g. paste and click at the same time) */
+
+    if (fetchBtn.disabled) return;
+
+
     currentUrl = url;
 
 
@@ -1565,15 +1570,24 @@
       '<i class="fa-solid fa-spinner fa-spin"></i> Fetching...';
 
 
-    /* Free servers sleep when idle, so the first request can be slow */
+    /* Lookups can take a while on the free server, so say what's happening */
 
-    const wakeTimer =
-      setTimeout(() => {
+    const stages = [
+      [4000, "Reading video details..."],
+      [12000, "Finding qualities..."],
+      [25000, "Almost there..."],
+      [45000, "Waking up server..."]
+    ];
 
-        fetchBtn.innerHTML =
-          '<i class="fa-solid fa-spinner fa-spin"></i> Waking up server...';
+    const stageTimers =
+      stages.map(([delay, text]) =>
+        setTimeout(() => {
 
-      }, 8000);
+          fetchBtn.innerHTML =
+            '<i class="fa-solid fa-spinner fa-spin"></i> ' + text;
+
+        }, delay)
+      );
 
 
     try {
@@ -1673,7 +1687,7 @@
 
     } finally {
 
-      clearTimeout(wakeTimer);
+      stageTimers.forEach(clearTimeout);
 
       fetchBtn.disabled =
         false;
@@ -2637,6 +2651,30 @@
 
     getFormats();
   }
+
+
+  /* =========================
+     AUTO-FETCH ON PASTE
+  ========================= */
+
+  /* Pasting a link starts the lookup right away (saves a tap) */
+
+  urlInput.addEventListener(
+    "paste",
+    () => {
+
+      setTimeout(() => {
+
+        if (/^https?:\/\/\S+$/i.test(urlInput.value.trim())) {
+
+          getFormats();
+
+        }
+
+      }, 0);
+
+    }
+  );
 
 
   /* =========================
