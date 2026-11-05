@@ -4,7 +4,17 @@
   <title>ClipFetch</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <link rel="icon" type="image/png" href="/logo.png">
+  <meta name="description" content="Download videos and MP3s from YouTube, Instagram and Facebook.">
+
+  <!-- Installable app (PWA) -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#0f2027">
+  <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ClipFetch">
 
   <link
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
@@ -150,6 +160,93 @@
 
     .toggle:hover {
       transform: rotate(20deg) scale(1.2);
+    }
+
+    .top-actions {
+      display: flex;
+
+      align-items: center;
+
+      gap: 14px;
+    }
+
+    /* =========================
+       INSTALL APP
+    ========================= */
+
+    .install-btn {
+      display: flex;
+
+      align-items: center;
+
+      gap: 6px;
+
+      border: none;
+
+      padding: 8px 12px;
+
+      border-radius: 10px;
+
+      background: rgba(255, 255, 255, 0.12);
+
+      color: inherit;
+
+      font-size: 13px;
+
+      font-weight: 600;
+
+      cursor: pointer;
+
+      transition: 0.3s;
+    }
+
+    .install-btn:hover {
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    .install-btn[hidden],
+    .install-hint[hidden] {
+      display: none;
+    }
+
+    body.light .install-btn {
+      background: #eee;
+    }
+
+    .install-hint {
+      margin-top: 12px;
+
+      padding: 10px 12px;
+
+      border-radius: 12px;
+
+      background: rgba(66, 165, 245, 0.15);
+
+      font-size: 13px;
+
+      line-height: 1.5;
+
+      display: flex;
+
+      gap: 10px;
+
+      align-items: flex-start;
+    }
+
+    .install-hint button {
+      margin-left: auto;
+
+      border: none;
+
+      background: none;
+
+      color: inherit;
+
+      cursor: pointer;
+
+      font-size: 16px;
+
+      padding: 0 2px;
     }
 
     /* =========================
@@ -826,7 +923,7 @@
 
       <div class="app-title">
 
-        <img src="/logo.png" class="logo" alt="ClipFetch">
+        <img src="/icons/logo-200.png" class="logo" alt="ClipFetch">
 
         <span class="brand-text">
           ClipFetch
@@ -834,17 +931,58 @@
 
       </div>
 
-      <div
-        class="toggle"
-        onclick="toggleTheme()"
-        title="Toggle theme"
-      >
-        <i
-          id="themeIcon"
-          class="fa-solid fa-sun"
-        ></i>
+      <div class="top-actions">
+
+        <button
+          id="installBtn"
+          class="install-btn"
+          type="button"
+          onclick="installApp()"
+          title="Install ClipFetch as an app"
+          hidden
+        >
+          <i class="fa-solid fa-mobile-screen-button"></i>
+          Install
+        </button>
+
+        <div
+          class="toggle"
+          onclick="toggleTheme()"
+          title="Toggle theme"
+        >
+          <i
+            id="themeIcon"
+            class="fa-solid fa-sun"
+          ></i>
+        </div>
+
       </div>
 
+    </div>
+
+
+    <!-- iPhone/iPad have no install prompt, so explain how -->
+
+    <div
+      id="installHint"
+      class="install-hint"
+      hidden
+    >
+      <i class="fa-solid fa-circle-info"></i>
+
+      <span>
+        Install ClipFetch: tap
+        <i class="fa-solid fa-arrow-up-from-bracket"></i>
+        <b>Share</b>, then <b>Add to Home Screen</b>.
+      </span>
+
+      <button
+        type="button"
+        onclick="dismissInstallHint()"
+        title="Dismiss"
+      >
+        &times;
+      </button>
     </div>
 
 
@@ -1086,7 +1224,7 @@
         document.createElement("img");
 
       img.src =
-        item.thumbnail || "/logo.png";
+        item.thumbnail || "/icons/logo-200.png";
 
       img.alt =
         "Thumbnail";
@@ -1263,6 +1401,11 @@
         "fa-solid fa-moon";
 
     }
+
+
+    handleSharedLink();
+
+    showInstallHintIfNeeded();
 
   };
 
@@ -2352,6 +2495,147 @@
     if (height) return "MP4 Video";
 
     return "Best available quality";
+  }
+
+
+  /* =========================
+     INSTALLABLE APP (PWA)
+  ========================= */
+
+  if ("serviceWorker" in navigator) {
+
+    navigator.serviceWorker
+      .register("/sw.js")
+      .catch(error => console.error("SERVICE WORKER:", error));
+  }
+
+
+  let installPrompt = null;
+
+  const installBtn =
+    document.getElementById("installBtn");
+
+
+  /* Chrome/Edge/Android fire this when the app can be installed */
+
+  window.addEventListener(
+    "beforeinstallprompt",
+    event => {
+
+      event.preventDefault();
+
+      installPrompt = event;
+
+      installBtn.hidden = false;
+    }
+  );
+
+
+  window.addEventListener(
+    "appinstalled",
+    () => {
+
+      installPrompt = null;
+
+      installBtn.hidden = true;
+    }
+  );
+
+
+  async function installApp() {
+
+    if (!installPrompt) return;
+
+    installPrompt.prompt();
+
+    await installPrompt.userChoice;
+
+    installPrompt = null;
+
+    installBtn.hidden = true;
+  }
+
+
+  function isInstalled() {
+
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      navigator.standalone === true
+    );
+  }
+
+
+  function showInstallHintIfNeeded() {
+
+    const isIos =
+      /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+
+    let dismissed = false;
+
+    try {
+      dismissed =
+        localStorage.getItem("installHintDismissed") === "1";
+    } catch {}
+
+
+    if (isIos && !isInstalled() && !dismissed) {
+
+      document.getElementById(
+        "installHint"
+      ).hidden = false;
+    }
+  }
+
+
+  function dismissInstallHint() {
+
+    document.getElementById(
+      "installHint"
+    ).hidden = true;
+
+    try {
+      localStorage.setItem("installHintDismissed", "1");
+    } catch {}
+  }
+
+
+  /*
+     When the installed app is picked from another app's
+     Share menu (e.g. YouTube → Share → ClipFetch),
+     the link arrives as ?url= or inside ?text=
+  */
+
+  function handleSharedLink() {
+
+    const params =
+      new URLSearchParams(window.location.search);
+
+
+    const shared =
+      [params.get("url"), params.get("text"), params.get("title")]
+        .filter(Boolean)
+        .join(" ");
+
+
+    const link =
+      shared.match(/https?:\/\/\S+/);
+
+
+    if (!link) return;
+
+
+    /* clean the address bar so a refresh doesn't fetch again */
+
+    window.history.replaceState(null, "", "/");
+
+
+    urlInput.value = link[0];
+
+    urlInput.dispatchEvent(new Event("input"));
+
+    getFormats();
   }
 
 
