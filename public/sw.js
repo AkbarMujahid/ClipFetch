@@ -1,7 +1,7 @@
 // ClipFetch service worker: makes the app installable and loads its shell offline.
 // API calls and downloads always go to the network.
 
-const CACHE = "clipfetch-v1";
+const CACHE = "clipfetch-v2";
 
 const APP_SHELL = [
   "/",
@@ -58,7 +58,9 @@ self.addEventListener("fetch", event => {
   // icons, fonts and other static files: cache first
   const cacheable =
     url.origin === location.origin ||
-    url.hostname === "cdnjs.cloudflare.com";
+    url.hostname === "cdnjs.cloudflare.com" ||
+    url.hostname === "fonts.googleapis.com" ||
+    url.hostname === "fonts.gstatic.com";
 
   if (!cacheable) return;
 
