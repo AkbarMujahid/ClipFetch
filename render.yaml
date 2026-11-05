@@ -20,3 +20,7 @@ services:
         value: "300M"
       - key: JOB_TIMEOUT_MINUTES
         value: "15"
+      # experimental: send YouTube requests through a free Cloudflare WARP tunnel
+      # set to "false" (here or in the Render dashboard) to switch it off
+      - key: USE_WARP
+        value: "true"

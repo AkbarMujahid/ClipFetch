@@ -19,6 +19,10 @@ function int(value, fallback) {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
+function hostList(value) {
+  return value.split(",").map(h => h.trim().toLowerCase()).filter(Boolean);
+}
+
 const CONFIG = {
   port: int(env.PORT, 3000),
   python: env.PYTHON_BIN || (process.platform === "win32" ? "python" : "python3"),
@@ -45,9 +49,12 @@ const CONFIG = {
   extractorArgs: env.YTDLP_EXTRACTOR_ARGS || "",
   // fail fast instead of retrying for a minute when a site blocks us
   extractorRetries: env.YTDLP_EXTRACTOR_RETRIES || "1",
-  allowedHosts: (env.ALLOWED_HOSTS ||
-    "youtube.com,youtu.be,youtube-nocookie.com,instagram.com,facebook.com,fb.watch,fb.com")
-    .split(",").map(h => h.trim().toLowerCase()).filter(Boolean),
+  // free Cloudflare WARP tunnel started by scripts/warp.sh (Docker only)
+  useWarp: env.USE_WARP === "true",
+  warpProxy: env.WARP_PROXY || `socks5://127.0.0.1:${env.WARP_PORT || 40000}`,
+  warpHosts: hostList(env.WARP_HOSTS || "youtube.com,youtu.be,youtube-nocookie.com"),
+  allowedHosts: hostList(env.ALLOWED_HOSTS ||
+    "youtube.com,youtu.be,youtube-nocookie.com,instagram.com,facebook.com,fb.watch,fb.com"),
   trustProxy: env.TRUST_PROXY ?? (env.RENDER ? "true" : "false")
 };
 
@@ -99,10 +106,12 @@ function validateUrl(raw) {
 
   if (url.protocol !== "https:" && url.protocol !== "http:") return null;
 
-  const host = url.hostname.toLowerCase();
-  const allowed = CONFIG.allowedHosts.some(h => host === h || host.endsWith("." + h));
+  return hostMatches(url, CONFIG.allowedHosts) ? url.href : null;
+}
 
-  return allowed ? url.href : null;
+function hostMatches(url, hosts) {
+  const host = new URL(url).hostname.toLowerCase();
+  return hosts.some(h => host === h || host.endsWith("." + h));
 }
 
 function parseQuality(type, raw) {
@@ -159,7 +168,15 @@ function killTree(proc) {
   }
 }
 
-function runYtdlp(args, { timeoutMs, collect = false, onLine } = {}) {
+// YTDLP_PROXY applies to every site; otherwise WARP is used only for its hosts
+// and only while the tunnel is confirmed working, so a broken tunnel falls back to direct
+function proxyFor(url) {
+  if (CONFIG.proxy) return CONFIG.proxy;
+  if (warp.connected && hostMatches(url, CONFIG.warpHosts)) return CONFIG.warpProxy;
+  return "";
+}
+
+function runYtdlp(url, args, { timeoutMs, collect = false, onLine } = {}) {
   const fullArgs = [
     "-m", "yt_dlp",
     "--no-playlist",
@@ -168,9 +185,12 @@ function runYtdlp(args, { timeoutMs, collect = false, onLine } = {}) {
   ];
   if (CONFIG.jsRuntimes) fullArgs.push("--js-runtimes", CONFIG.jsRuntimes);
   if (cookiesPath) fullArgs.push("--cookies", cookiesPath);
-  if (CONFIG.proxy) fullArgs.push("--proxy", CONFIG.proxy);
   if (CONFIG.extractorArgs) fullArgs.push("--extractor-args", CONFIG.extractorArgs);
-  fullArgs.push(...args);
+
+  const proxy = proxyFor(url);
+  if (proxy) fullArgs.push("--proxy", proxy);
+
+  fullArgs.push(...args, "--", url);
 
   const proc = spawn(CONFIG.python, fullArgs, {
     detached: process.platform !== "win32",
@@ -217,6 +237,50 @@ function runYtdlp(args, { timeoutMs, collect = false, onLine } = {}) {
   });
 
   return { proc, done };
+}
+
+// =========================
+// WARP TUNNEL STATUS
+// =========================
+const warp = { enabled: CONFIG.useWarp, connected: false, ip: null, checkedAt: null };
+
+// Cloudflare's trace page reports "warp=on" when the request came through WARP
+function checkWarp() {
+  const socks = CONFIG.warpProxy.replace(/^socks5:/, "socks5h:");
+  const proc = spawn("curl", [
+    "-s", "--max-time", "10", "-x", socks,
+    "https://www.cloudflare.com/cdn-cgi/trace"
+  ], { windowsHide: true });
+
+  let out = "";
+  proc.stdout.on("data", chunk => { out += chunk; });
+
+  let settled = false;
+  const settle = () => {
+    if (settled) return;
+    settled = true;
+
+    const wasConnected = warp.connected;
+    warp.connected = /^warp=(on|plus)$/m.test(out);
+    warp.ip = warp.connected ? (out.match(/^ip=(.+)$/m) || [])[1] || null : null;
+    warp.checkedAt = new Date().toISOString();
+
+    if (warp.connected !== wasConnected) {
+      console.log(warp.connected
+        ? `[warp] tunnel connected (${warp.ip}); YouTube requests now go through WARP`
+        : "[warp] tunnel down; YouTube requests go direct");
+    }
+
+    // check often until it comes up, then occasionally
+    setTimeout(checkWarp, warp.connected ? 5 * 60_000 : 30_000).unref();
+  };
+
+  proc.on("error", settle);
+  proc.on("close", settle);
+}
+
+if (warp.enabled) {
+  setTimeout(checkWarp, 5000).unref();
 }
 
 function rateLimit(max, windowMs) {
@@ -355,7 +419,6 @@ function downloadArgs(job) {
     );
   }
 
-  args.push("--", job.url);
   return args;
 }
 
@@ -401,7 +464,7 @@ async function runJob(job) {
   update(job, { status: "downloading", message: "Starting…", percent: 0 });
 
   try {
-    const { proc, done } = runYtdlp(downloadArgs(job), {
+    const { proc, done } = runYtdlp(job.url, downloadArgs(job), {
       timeoutMs: CONFIG.jobTimeoutMs,
       onLine: line => handleProgressLine(job, line)
     });
@@ -486,6 +549,9 @@ app.get("/health", (req, res) => {
     ffmpeg: Boolean(ffmpegVersion),
     cookies: Boolean(cookiesPath),
     proxy: Boolean(CONFIG.proxy),
+    warp: warp.enabled
+      ? { connected: warp.connected, ip: warp.ip, checkedAt: warp.checkedAt }
+      : "off",
     activeJobs,
     queuedJobs: queue.length
   });
@@ -502,7 +568,8 @@ app.post("/api/formats", rateLimit(CONFIG.infoRateLimit, CONFIG.rateWindowMs), a
   }
 
   const { code, stdout, stderr, timedOut } = await runYtdlp(
-    ["-J", "--flat-playlist", "--", url],
+    url,
+    ["-J", "--flat-playlist"],
     { timeoutMs: CONFIG.infoTimeoutMs, collect: true }
   ).done;
 
