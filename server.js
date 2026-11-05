@@ -328,19 +328,47 @@ function workerLookup(url, args, timeoutMs) {
 // the details instead of extracting the video a second time.
 const infoCache = new Map();
 
+const TRACKING_PARAMS = /^(utm_.*|si|pp|feature|igsh|igshid|fbclid|mibextid|rdid|share_url)$/i;
+
+// The same video arrives as many different links (youtu.be vs youtube.com,
+// and share buttons add a new tracking code each time), so cache by video
+function cacheKey(url) {
+  const u = new URL(url);
+
+  if (hostMatches(url, ["youtube.com", "youtu.be", "youtube-nocookie.com"])) {
+    const id =
+      u.searchParams.get("v") ||
+      (u.hostname.endsWith("youtu.be") && u.pathname.split("/")[1]) ||
+      (u.pathname.match(/^\/(?:shorts|live|embed|v)\/([\w-]+)/) || [])[1];
+    if (id) return `youtube:${id}`;
+  }
+
+  [...u.searchParams.keys()]
+    .filter(key => TRACKING_PARAMS.test(key))
+    .forEach(key => u.searchParams.delete(key));
+  u.hash = "";
+  return u.href;
+}
+
 function cachedInfo(url) {
-  const entry = infoCache.get(url);
+  const key = cacheKey(url);
+  const entry = infoCache.get(key);
   if (!entry) return null;
   if (Date.now() - entry.at > CONFIG.infoCacheMs || entry.proxy !== proxyFor(url)) {
-    infoCache.delete(url);
+    infoCache.delete(key);
     return null;
   }
   return entry.info;
 }
 
+function uncacheInfo(url) {
+  infoCache.delete(cacheKey(url));
+}
+
 function cacheInfo(url, info) {
-  infoCache.delete(url);
-  infoCache.set(url, { info, at: Date.now(), proxy: proxyFor(url) });
+  const key = cacheKey(url);
+  infoCache.delete(key);
+  infoCache.set(key, { info, at: Date.now(), proxy: proxyFor(url) });
 
   // keep memory small: video details can be large
   while (infoCache.size > CONFIG.infoCacheSize) {
@@ -631,7 +659,7 @@ async function runJob(job) {
     // saved download links can expire; try once more with a fresh lookup
     if (infoFile && code !== 0 && !timedOut && !job.cancelled) {
       console.log(`JOB ${job.id}: saved details failed, retrying with a fresh lookup:\n  ${lastLines(stderr, 2)}`);
-      infoCache.delete(job.url);
+      uncacheInfo(job.url);
       update(job, { status: "downloading", message: "Retrying…", percent: 0, speed: "", eta: "" });
       ({ code, stderr, timedOut } = await attempt(null));
       job.proc = null;
@@ -704,6 +732,11 @@ app.use((req, res, next) => {
 
 // serve frontend
 app.use(express.static(path.join(__dirname, "public")));
+
+// lets the Android app open this site full-screen (express.static skips dot-folders)
+app.get("/.well-known/assetlinks.json", (req, res) => {
+  res.type("application/json").sendFile(path.join(__dirname, "public", ".well-known", "assetlinks.json"));
+});
 
 // =========================
 // HEALTH

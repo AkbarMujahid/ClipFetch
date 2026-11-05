@@ -196,6 +196,23 @@ ClipFetch is a Progressive Web App, so it can be installed from the browser — 
 
 Installing requires HTTPS, which Render provides automatically (it also works on `http://localhost`).
 
+### Android APK
+
+The `android/` folder contains an Android app (a [Trusted Web Activity](https://developer.chrome.com/docs/android/trusted-web-activity/) made with [Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap)) that opens `https://clipfetch.onrender.com` full-screen, with the same "Share to ClipFetch" support. Updates to the website show up in the app immediately — the APK only needs rebuilding if the app name, icons, colours or address change.
+
+* Package: `com.akbarmujahid.clipfetch` — needs Chrome (or another browser that supports TWAs) on the phone.
+* `public/.well-known/assetlinks.json` proves the app and the website belong together; without it the app shows a browser address bar.
+* Install the APK by opening it on the phone and allowing "Install unknown apps" for your browser or file manager. (Google Play doesn't allow YouTube downloader apps, so it's shared as an APK.)
+
+To rebuild (Windows, Git Bash, with Bubblewrap installed):
+
+```
+node android/generate.mjs https://clipfetch.onrender.com   # only when the manifest/icons/address change
+sh android/build.sh                                         # builds and signs android/ClipFetch.apk
+```
+
+The signing key (`android/clipfetch-release.keystore`) and its password (`android/SIGNING-KEY-README.txt`) are **not** in Git. Back them up — every future update must be signed with the same key. If the key ever changes, update the fingerprint in `assetlinks.json`.
+
 ---
 
 ## ⚠️ Notes

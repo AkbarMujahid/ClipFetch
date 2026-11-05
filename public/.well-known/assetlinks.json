@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.akbarmujahid.clipfetch",
+      "sha256_cert_fingerprints": [
+        "88:BF:0A:6B:70:08:7A:A3:C1:C3:2D:A1:50:2C:CA:5E:F0:CF:4C:36:C4:1C:6C:D6:5C:7F:08:85:93:92:22:FA"
+      ]
+    }
+  }
+]
