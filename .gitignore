@@ -12,3 +12,15 @@ downloads
 
 # never commit login cookies
 cookies.txt
+
+# Android app: signing key, its password, and build outputs
+*.keystore
+*.jks
+android/SIGNING-KEY-README.txt
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.apk
+*.aab
+*.idsig

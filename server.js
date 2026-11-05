@@ -733,6 +733,11 @@ app.use((req, res, next) => {
 // serve frontend
 app.use(express.static(path.join(__dirname, "public")));
 
+// lets the Android app open this site full-screen (express.static skips dot-folders)
+app.get("/.well-known/assetlinks.json", (req, res) => {
+  res.type("application/json").sendFile(path.join(__dirname, "public", ".well-known", "assetlinks.json"));
+});
+
 // =========================
 // HEALTH
 // =========================
