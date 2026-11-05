@@ -17,6 +17,7 @@ Built with a clean UI and a Node.js backend using yt-dlp, it provides a smooth a
 * 🖼 Thumbnail preview before download
 * 📜 Download history with re-download option
 * 📱 Responsive design (works on mobile & desktop)
+* 📲 Installable as an app on Android, iPhone and desktop (PWA), with "Share to ClipFetch" on Android
 * 🛡 Safe for public hosting: URL validation, rate limits, download queue, size/length limits, automatic cleanup
 
 ---
@@ -36,8 +37,11 @@ Built with a clean UI and a Node.js backend using yt-dlp, it provides a smooth a
 ```
 ClipFetch/
 ├── public/
-│   ├── index.html      # frontend (UI + JavaScript)
-│   └── logo.png
+│   ├── index.html            # frontend (UI + JavaScript)
+│   ├── manifest.webmanifest  # app name, icons and share target (PWA)
+│   ├── sw.js                 # service worker (installable + offline app shell)
+│   ├── icons/                # app icons, favicon, small header logo
+│   └── logo.png              # full-size logo
 ├── server.js           # Express backend
 ├── package.json
 ├── scripts/
@@ -173,6 +177,18 @@ All settings are optional environment variables:
 2. Click **Get Formats**
 3. Choose the **Video** or **Audio** tab and a quality
 4. Watch the progress bar — the file downloads automatically when ready
+
+---
+
+## 📲 Install as an App
+
+ClipFetch is a Progressive Web App, so it can be installed from the browser — no app store needed. It gets its own home-screen icon and opens full-screen.
+
+* **Android (Chrome):** open the site and tap **Install** in the top bar (or ⋮ menu → **Install app**). Once installed, you can share a video from the YouTube/Instagram/Facebook app straight to **ClipFetch** and it fetches the formats automatically.
+* **iPhone / iPad (Safari):** tap **Share** → **Add to Home Screen**. The app shows this hint the first time.
+* **Desktop (Chrome / Edge):** click **Install** in the top bar or the install icon in the address bar.
+
+Installing requires HTTPS, which Render provides automatically (it also works on `http://localhost`).
 
 ---
 
