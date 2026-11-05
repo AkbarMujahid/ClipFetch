@@ -40,6 +40,9 @@ ClipFetch/
 │   └── logo.png
 ├── server.js           # Express backend
 ├── package.json
+├── scripts/
+│   ├── start.sh        # container entrypoint
+│   └── warp.sh         # optional Cloudflare WARP tunnel for YouTube
 ├── Dockerfile          # image with Node, Python, yt-dlp and FFmpeg
 ├── render.yaml         # Render Blueprint (one-click deploy)
 └── .dockerignore
@@ -114,6 +117,19 @@ Tips for cookies that last longer: log in using a **private/incognito window**, 
 
 If YouTube still blocks the server even with cookies, set `YTDLP_PROXY` to a proxy (for example a residential proxy). Most good proxies are paid.
 
+### Experimental: free Cloudflare WARP tunnel
+
+YouTube often blocks cloud servers by their IP address (`HTTP Error 429` / `403` in the logs). With `USE_WARP=true` (on by default in `render.yaml`), the container starts a free [Cloudflare WARP](https://one.one.one.one/) tunnel and sends **only YouTube** requests through it, so YouTube sees a Cloudflare WARP address instead of Render's.
+
+* It uses [wgcf](https://github.com/ViRb3/wgcf) to register a free WARP account and [wireproxy](https://github.com/pufferffish/wireproxy) to run the tunnel as a local SOCKS5 proxy (no root or VPN device needed).
+* The server checks the tunnel every few minutes. While it's down, YouTube requests go direct, so the app keeps working either way.
+* `/health` shows `"warp": {"connected": true, "ip": "..."}` when the tunnel is working.
+* It may not help: YouTube sometimes blocks WARP addresses too, and running WARP on a server is a grey area in Cloudflare's terms.
+
+**To switch it off:** set `USE_WARP` to `false` in Render → Environment (or in `render.yaml`) and redeploy. The app then behaves exactly as before. The previous version is also tagged in Git as `v2-before-warp`.
+
+Optional: a new WARP account is registered on every restart. To reuse one, register locally with `wgcf register --accept-tos` and add the resulting `wgcf-account.toml` as a Render Secret File.
+
 Never commit `cookies.txt` to Git (it's already in `.gitignore`).
 
 ---
@@ -142,6 +158,10 @@ All settings are optional environment variables:
 | `YTDLP_PROXY` | (none) | Proxy for yt-dlp, e.g. `http://user:pass@host:port` |
 | `YTDLP_EXTRACTOR_ARGS` | (none) | Extra `--extractor-args` for yt-dlp, e.g. `youtube:player_client=default,tv` |
 | `YTDLP_EXTRACTOR_RETRIES` | `1` | How many times yt-dlp retries a blocked request before failing |
+| `USE_WARP` | `false` (`true` in `render.yaml`) | Docker only: route YouTube through a free Cloudflare WARP tunnel |
+| `WARP_HOSTS` | YouTube domains | Sites that go through WARP |
+| `WARP_PORT` | `40000` | Local port of the WARP SOCKS5 proxy |
+| `WARP_ACCOUNT_FILE` | `/etc/secrets/wgcf-account.toml` | Saved WARP account to reuse (optional) |
 | `AUTO_UPDATE_YTDLP` | `true` | Docker only: update yt-dlp each time the container starts |
 | `TRUST_PROXY` | `true` on Render, else `false` | Express `trust proxy` setting (for correct visitor IPs) |
 
